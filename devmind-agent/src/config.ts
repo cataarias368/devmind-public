@@ -53,6 +53,25 @@ const ConfigSchema = z.object({
 
   // --- Slack Webhook (Opcional) ---
   SLACK_WEBHOOK_URL: z.string().url().optional(),
+
+  // --- DevMind 3.0: Multi-Modelo (Opcional) ---
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  OLLAMA_HOST: z.string().optional(),
+  PREFERRED_MODEL: z.string().optional(),
+  AUTO_MUTATION: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform(v => v === 'true'),
+
+  // --- DevMind 3.0: A2A Protocol (Opcional) ---
+  A2A_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform(v => v === 'true'),
+  A2A_NODE_NAME: z.string().default('DevMind-Agent'),
+  A2A_PORT: z.coerce.number().int().min(1024).max(65535).default(4000),
 });
 
 export type DevMindConfig = z.infer<typeof ConfigSchema>;

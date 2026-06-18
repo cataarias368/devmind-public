@@ -1,5 +1,5 @@
 // ============================================================
-// src/index.ts - Punto de Entrada Principal de DevMind Agent v2.0
+// src/index.ts - Punto de Entrada Principal de DevMind Agent v3.0
 // ============================================================
 
 import { resolve } from 'path';
@@ -19,6 +19,8 @@ import { RestAPIServer } from './server.js';
 import { TaskManager } from './tasks/index.js';
 import { AdvertisingManager } from './advertising.js';
 import { Monitor } from './monitor.js';
+import { scanAvailableModels } from './llm-scanner.js';
+import { A2AProtocol } from './a2a-protocol.js';
 import type { AgentCore } from './types.js';
 
 async function main(): Promise<void> {
@@ -26,7 +28,7 @@ async function main(): Promise<void> {
   const config = getConfig();
   const workspaceRoot = resolve(config.WORKSPACE_ROOT);
 
-  console.log('🧠 DevMind Agent v2.0.0');
+  console.log('🧠 DevMind Agent v3.0.0');
   console.log(`📂 Workspace: ${workspaceRoot}`);
 
   // --- Inicializar proveedores globales ---
@@ -362,6 +364,200 @@ async function main(): Promise<void> {
     return;
   }
 
+  // ======== DEV MIND 3.0: AUTO-MUTATION ========
+
+  // LISTAR MODELOS DISPONIBLES
+  if (args.includes('--models')) {
+    const models = scanAvailableModels();
+    console.log('\n🧬 Modelos LLM Disponibles:\n');
+    if (models.length === 0) {
+      console.log('  ⚠️ No se encontraron modelos. Configurá al menos una API key en .env');
+    } else {
+      for (const model of models) {
+        const cost = model.costPer1kInput > 0 ? `$${model.costPer1kInput.toFixed(4)}/1K` : 'Gratis';
+        console.log(`  ${model.id.padEnd(20)} ${model.name.padEnd(25)} ${cost.padEnd(15)} ${model.popularity}/100 calidad`);
+        console.log(`  ${''.padEnd(20)} Capacidades: ${model.capabilities.join(', ')}`);
+      }
+    }
+    console.log(`\n  Total: ${models.length} modelos configurados`);
+    return;
+  }
+
+  // AUTO-MUTATE: Ejecutar tarea con auto-mutación
+  if (args.includes('--auto-mutate')) {
+    const taskIndex = args.indexOf('--auto-mutate') + 1;
+    const task = args[taskIndex] || 'Analizar la estructura del proyecto y sugerir mejoras';
+
+    console.log(`🧬 Modo Auto-Mutation: "${task}"\n`);
+
+    await taskManager.startAllTasks();
+
+    const result = await agentLoop(task, {
+      llmProvider,
+      imageProvider,
+      workspaceRoot,
+      maxSteps: config.AGENT_MAX_STEPS,
+      dryRun: config.AGENT_DRY_RUN,
+      onStep: (step, msg) => console.log(`[Paso ${step}] ${msg}`),
+      autoMutation: true,
+      preferredModel: config.PREFERRED_MODEL,
+    });
+
+    monitor.recordTask(result.success);
+    await taskManager.evaluator.record(task, { success: result.success, summary: result.summary, steps: result.stepsCompleted });
+
+    console.log(`\n${result.success ? '✅' : '❌'} Resultado:`);
+    console.log(result.summary);
+    if (result.modelMutations && result.modelMutations > 0) {
+      console.log(`\n🧬 Auto-Mutation: ${result.modelMutations} mutaciones realizadas`);
+    }
+    if (result.totalCost !== undefined && result.totalCost > 0) {
+      console.log(`💰 Costo total: $${result.totalCost.toFixed(4)}`);
+    }
+
+    await taskManager.stopAllTasks();
+    return;
+  }
+
+  // ======== DEV MIND 3.0: A2A PROTOCOL ========
+
+  // A2A: Iniciar agente con protocolo A2A
+  if (args.includes('--a2a')) {
+    const nodeName = args[args.indexOf('--a2a') + 1]?.startsWith('--')
+      ? config.A2A_NODE_NAME
+      : (args[args.indexOf('--a2a') + 1] || config.A2A_NODE_NAME);
+
+    console.log(`🤝 Modo A2A: "${nodeName}"\n`);
+
+    await taskManager.startAllTasks();
+
+    const { randomUUID } = await import('crypto');
+    const a2a = new A2AProtocol({
+      nodeId: randomUUID(),
+      name: nodeName,
+      workspace: workspaceRoot,
+      capabilities: ['coding', 'refactoring', 'testing', 'documentation', 'image-generation'],
+      port: config.A2A_PORT,
+    });
+
+    a2a.startDiscovery();
+
+    a2a.on('incoming', (msg) => {
+      console.log(`📩 [A2A] Mensaje de ${msg.from}: ${String(msg.content).slice(0, 100)}`);
+    });
+
+    console.log(`🟢 Agente A2A "${nodeName}" iniciado y anunciando presencia`);
+    console.log('Presioná Ctrl+C para detener.');
+
+    process.on('SIGINT', async () => {
+      a2a.stop();
+      await taskManager.stopAllTasks();
+      process.exit(0);
+    });
+    return;
+  }
+
+  // A2A-LIST: Listar agentes disponibles
+  if (args.includes('--a2a-list')) {
+    const a2a = new A2AProtocol({
+      nodeId: 'scanner',
+      name: 'DevMind-Scanner',
+      workspace: workspaceRoot,
+      capabilities: ['discovery'],
+      port: config.A2A_PORT,
+    });
+
+    const nodes = await a2a.discoverNodes();
+    console.log('\n🤝 Agentes A2A Disponibles:\n');
+
+    if (nodes.length === 0) {
+      console.log('  ⚠️ No se encontraron agentes. Asegurate de que otros agentes estén corriendo con --a2a');
+    } else {
+      for (const node of nodes) {
+        const status = node.status === 'active' ? '🟢' : '🔴';
+        console.log(`  ${status} ${node.name} (ID: ${node.id.slice(0, 8)}...)`);
+        console.log(`     Capacidades: ${node.capabilities.join(', ')}`);
+        console.log(`     Último visto: ${new Date(node.lastSeen).toLocaleTimeString()}`);
+      }
+    }
+    console.log(`\n  Total: ${nodes.length} agentes`);
+    a2a.stop();
+    return;
+  }
+
+  // A2A-TASK: Orquestar equipo para tarea compleja
+  if (args.includes('--a2a-task')) {
+    const taskIndex = args.indexOf('--a2a-task') + 1;
+    const task = args[taskIndex] || 'Construir una API REST completa con tests y documentación';
+
+    console.log(`🤝 Modo A2A Task: "${task}"\n`);
+
+    const { randomUUID } = await import('crypto');
+    const a2a = new A2AProtocol({
+      nodeId: randomUUID(),
+      name: 'DevMind-Orchestrator',
+      workspace: workspaceRoot,
+      capabilities: ['architecture', 'coding', 'orchestration'],
+      port: config.A2A_PORT,
+    });
+
+    a2a.startDiscovery();
+
+    // Esperar un momento para que se descubran agentes
+    console.log('🔍 Buscando agentes disponibles...');
+    await new Promise(r => setTimeout(r, 5000));
+
+    const nodes = await a2a.discoverNodes();
+    const otherNodes = nodes.filter(n => n.id !== a2a.getMyNode().id);
+
+    if (otherNodes.length === 0) {
+      console.log('⚠️ No hay otros agentes disponibles. Usando modo single-agent con auto-mutación.');
+
+      await taskManager.startAllTasks();
+      const result = await agentLoop(task, {
+        llmProvider,
+        imageProvider,
+        workspaceRoot,
+        maxSteps: config.AGENT_MAX_STEPS,
+        onStep: (step, msg) => console.log(`[Paso ${step}] ${msg}`),
+        autoMutation: true,
+        a2aEnabled: false,
+      });
+
+      console.log(`\n${result.success ? '✅' : '❌'} Resultado:`);
+      console.log(result.summary);
+      await taskManager.stopAllTasks();
+    } else {
+      const team = await a2a.orchestrateTeam(task);
+      console.log(`\n🤝 Equipo Orquestado:`);
+      console.log(`  Líder: ${team.leader.name}`);
+      console.log(`  Asignados: ${team.assigned.map(n => n.name).join(', ') || 'Ninguno'}`);
+
+      // Ejecutar con multi-agente
+      await taskManager.startAllTasks();
+      const result = await agentLoop(task, {
+        llmProvider,
+        imageProvider,
+        workspaceRoot,
+        maxSteps: config.AGENT_MAX_STEPS,
+        onStep: (step, msg) => console.log(`[Paso ${step}] ${msg}`),
+        autoMutation: true,
+        a2aEnabled: true,
+        nodeName: 'DevMind-Orchestrator',
+      });
+
+      console.log(`\n${result.success ? '✅' : '❌'} Resultado:`);
+      console.log(result.summary);
+      if (result.a2aNodesUsed) {
+        console.log(`🤝 Agentes A2A utilizados: ${result.a2aNodesUsed}`);
+      }
+      await taskManager.stopAllTasks();
+    }
+
+    a2a.stop();
+    return;
+  }
+
   // 8. MODO AGENTE CLI (Fallback - tarea directa)
   const userTask = args.find(a => !a.startsWith('--'));
   if (!userTask) {
@@ -387,9 +583,20 @@ async function main(): Promise<void> {
   📢 Publicidad:
   devmind --ad-stats           Estadísticas de publicidad
 
+  🧬 DevMind 3.0 - Auto-Mutation:
+  devmind --models             Listar modelos LLM disponibles
+  devmind --auto-mutate [tarea] Ejecutar con auto-mutación de modelo
+
+  🤝 DevMind 3.0 - A2A Protocol:
+  devmind --a2a [--node-name NAME]  Iniciar agente con A2A habilitado
+  devmind --a2a-list                 Listar agentes A2A disponibles
+  devmind --a2a-task [tarea]        Orquestar equipo para tarea compleja
+
 Ejemplos:
   devmind "Crear una API REST con Express"
   devmind --multi-agent "Construir un sistema de autenticación"
+  devmind --auto-mutate "Refactoriza el módulo de autenticación"
+  devmind --a2a --node-name "Backend-Dev"
   devmind --test ./src --run
   devmind --health
   devmind --status

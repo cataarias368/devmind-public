@@ -21,6 +21,12 @@ interface AgentConfig {
   maxSteps?: number;
   dryRun?: boolean;
   onStep?: (step: number, message: string) => void;
+  // DevMind 3.0
+  autoMutation?: boolean;
+  a2aEnabled?: boolean;
+  nodeId?: string;
+  nodeName?: string;
+  preferredModel?: string;
 }
 
 interface AgentResult {
@@ -29,6 +35,10 @@ interface AgentResult {
   stepsCompleted: number;
   filesCreated: string[];
   errors: string[];
+  // DevMind 3.0
+  modelMutations?: number;
+  totalCost?: number;
+  a2aNodesUsed?: number;
 }
 
 // --- Definición de Herramientas ---
@@ -115,6 +125,12 @@ export class Agent {
   private readonly filesCreated: string[] = [];
   private readonly errors: string[] = [];
   private stepCount = 0;
+  // DevMind 3.0
+  private mutationEngine: import('./auto-mutation.js').AutoMutationEngine | null = null;
+  private a2aProtocol: import('./a2a-protocol.js').A2AProtocol | null = null;
+  private modelRouter: import('./model-router.js').ModelRouter | null = null;
+  private totalCost = 0;
+  private totalTokens = 0;
 
   constructor(config: AgentConfig) {
     this.config = config;
@@ -127,6 +143,44 @@ export class Agent {
       files: [],
       errors: [],
     };
+
+    // Inicializar DevMind 3.0
+    this.initializeV3();
+  }
+
+  private async initializeV3(): Promise<void> {
+    // Auto-Mutation
+    if (this.config.autoMutation || this.config.preferredModel) {
+      const { ModelRouter } = await import('./model-router.js');
+      this.modelRouter = new ModelRouter({
+        defaultModelId: this.config.preferredModel,
+        autoMutation: this.config.autoMutation,
+      });
+
+      if (this.config.autoMutation) {
+        const { AutoMutationEngine } = await import('./auto-mutation.js');
+        this.mutationEngine = new AutoMutationEngine(this.modelRouter);
+      }
+    }
+
+    // A2A Protocol
+    if (this.config.a2aEnabled) {
+      const { A2AProtocol } = await import('./a2a-protocol.js');
+      const { randomUUID } = await import('crypto');
+      this.a2aProtocol = new A2AProtocol({
+        nodeId: this.config.nodeId || randomUUID(),
+        name: this.config.nodeName || 'DevMind-Agent',
+        workspace: this.config.workspaceRoot,
+        capabilities: ['coding', 'refactoring', 'testing', 'documentation', 'image-generation'],
+        port: 3000,
+      });
+      this.a2aProtocol.startDiscovery();
+
+      // Escuchar mensajes entrantes
+      this.a2aProtocol.on('incoming', (msg: import('./a2a-protocol.js').AgentMessage) => {
+        console.log(`📩 [A2A] Mensaje de ${msg.from}: ${String(msg.content).slice(0, 100)}`);
+      });
+    }
   }
 
   /**
@@ -164,11 +218,68 @@ export class Agent {
           );
         }
 
-        // Llamar al LLM
-        const response = await this.config.llmProvider.call(
-          this.messages,
-          FILE_TOOLS
-        );
+        // DevMind 3.0: Auto-Mutation (evaluar antes de cada llamada)
+        if (this.mutationEngine && this.modelRouter) {
+          const { scanAvailableModels } = await import('./llm-scanner.js');
+          const mutationResult = await this.mutationEngine.evaluateAndMutate({
+            task,
+            currentModel: this.modelRouter.getActiveModel(),
+            performance: {
+              tokens: this.totalTokens,
+              time: 0,
+              successRate: this.errors.length > 0 ? Math.max(0, 1 - this.errors.length / this.stepCount) : 1,
+              cost: this.totalCost,
+            },
+            availableModels: scanAvailableModels(),
+            userPreference: this.config.preferredModel,
+            stepNumber: this.stepCount,
+            totalSteps: maxSteps,
+          });
+
+          if (mutationResult.mutated) {
+            console.log(`🔄 [Auto-Mutation] ${mutationResult.reason}: ${mutationResult.previousModel} → ${mutationResult.model.id}`);
+          }
+        }
+
+        // DevMind 3.0: A2A (buscar colaboración en tareas complejas)
+        if (this.a2aProtocol && this.stepCount === 1) {
+          const nodes = await this.a2aProtocol.discoverNodes();
+          const otherNodes = nodes.filter(n => n.id !== this.a2aProtocol!.getMyNode().id);
+          if (otherNodes.length > 0) {
+            console.log(`👥 [A2A] ${otherNodes.length} agentes disponibles: ${otherNodes.map(n => n.name).join(', ')}`);
+
+            // Si la tarea es compleja, orquestar equipo
+            if (task.length > 200) {
+              const team = await this.a2aProtocol.orchestrateTeam(task);
+              console.log(`🤝 [A2A] Equipo: líder=${team.leader.name}, asignados=${team.assigned.length}`);
+            }
+          }
+        }
+
+        // Llamar al LLM (con fallback si hay router)
+        let response;
+        const startTime = Date.now();
+
+        if (this.modelRouter) {
+          const routedResult = await this.modelRouter.callWithFallback(this.messages, FILE_TOOLS);
+          response = routedResult;
+          if (routedResult.fallbackUsed) {
+            console.log(`⚠️ [ModelRouter] Fallback usado → ${routedResult.modelUsed}`);
+          }
+        } else {
+          response = await this.config.llmProvider.call(this.messages, FILE_TOOLS);
+        }
+
+        const elapsedMs = Date.now() - startTime;
+        this.totalTokens += response.usage?.total_tokens || 0;
+
+        // Registrar resultado en auto-mutation
+        if (this.mutationEngine && this.modelRouter) {
+          const modelId = this.modelRouter.getActiveModel().id;
+          this.mutationEngine.recordCallOutcome(modelId, true, elapsedMs);
+          const perf = this.modelRouter.getPerformanceSummary(modelId);
+          this.totalCost = perf.totalCost;
+        }
 
         const choice = response.choices[0];
         if (!choice) break;
@@ -235,12 +346,23 @@ export class Agent {
       this.state
     );
 
+    // Detener A2A si estaba activo
+    if (this.a2aProtocol) {
+      this.a2aProtocol.stop();
+    }
+
+    // Recopilar stats de auto-mutation
+    const mutationStats = this.mutationEngine?.getStats();
+
     return {
       success: this.errors.length === 0,
       summary: this.generateSummary(),
       stepsCompleted: this.stepCount,
       filesCreated: this.filesCreated,
       errors: this.errors,
+      modelMutations: mutationStats?.totalMutations,
+      totalCost: this.totalCost,
+      a2aNodesUsed: this.a2aProtocol?.getStats().activeNodes,
     };
   }
 
