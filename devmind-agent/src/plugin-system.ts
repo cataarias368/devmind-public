@@ -1,80 +1,173 @@
 // ============================================================
-// src/plugin-system.ts - Sistema de Plugins Extensible
+// src/plugin-system.ts - Sistema de Plugins con Permisos Granular
 // ============================================================
 
-import type { Plugin, AgentCore, ToolDefinition } from './types.js';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { join, resolve } from 'path';
+import type { AgentCore, ToolDefinition } from './types.js';
 
-interface PluginManifest {
+// --- Permisos ---
+
+export type Permission =
+  | 'read:files'
+  | 'write:files'
+  | 'write:temp'
+  | 'execute:command'
+  | 'execute:npm'
+  | 'execute:git'
+  | 'network:http'
+  | 'network:https'
+  | 'storage:memory'
+  | 'storage:persistent';
+
+const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
+  'read:files': 'Leer archivos del workspace',
+  'write:files': 'Escribir archivos del workspace',
+  'write:temp': 'Escribir en archivos temporales',
+  'execute:command': 'Ejecutar comandos del sistema',
+  'execute:npm': 'Ejecutar comandos npm',
+  'execute:git': 'Ejecutar comandos git',
+  'network:http': 'Hacer peticiones HTTP',
+  'network:https': 'Hacer peticiones HTTPS',
+  'storage:memory': 'Leer/escribir memoria de corto plazo',
+  'storage:persistent': 'Leer/escribir almacenamiento persistente',
+};
+
+// --- Interfaces ---
+
+export interface PluginTool {
   name: string;
-  version: string;
   description: string;
-  enabled: boolean;
+  parameters: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required: string[];
+  };
+  handler: (args: Record<string, unknown>, core: AgentCore, permissions: Permission[]) => Promise<string>;
 }
 
+export interface Plugin {
+  name: string;
+  version: string;
+  description?: string;
+  permissions: Permission[];
+  tools?: PluginTool[];
+  onLoad?: (core: AgentCore) => void | Promise<void>;
+  onUnload?: () => void | Promise<void>;
+}
+
+interface PluginManifest {
+  approvedPermissions: Permission[];
+  plugins: Array<{
+    name: string;
+    version: string;
+    description?: string;
+    permissions: Permission[];
+    loadedAt: number;
+  }>;
+}
+
+// --- Plugin Manager ---
+
 export class PluginManager {
-  private readonly plugins: Map<string, Plugin> = new Map();
-  private readonly manifests: Map<string, PluginManifest> = new Map();
-  private readonly core: AgentCore;
+  private plugins: Map<string, Plugin> = new Map();
+  private loaded: Set<string> = new Set();
+  private core: AgentCore;
+  private manifestPath: string;
 
   constructor(core: AgentCore) {
     this.core = core;
+    this.manifestPath = join(core.workspaceRoot, '.devmind', 'plugins', 'manifest.json');
   }
 
+  // ============================================================
+  // CARGA DE PLUGINS
+  // ============================================================
+
   /**
-   * Registra y carga un plugin.
+   * Carga un plugin validando sus permisos.
    */
   async load(plugin: Plugin): Promise<void> {
-    if (this.plugins.has(plugin.name)) {
-      console.warn(`⚠️ Plugin "${plugin.name}" ya está cargado. Saltando.`);
+    if (this.loaded.has(plugin.name)) {
+      console.warn(`[Plugin] ${plugin.name} ya está cargado`);
       return;
     }
 
-    // Registrar el plugin
-    this.plugins.set(plugin.name, plugin);
-    this.manifests.set(plugin.name, {
-      name: plugin.name,
-      version: plugin.version,
-      description: plugin.description || '',
-      enabled: true,
-    });
-
-    // Ejecutar hook de carga
-    if (plugin.onLoad) {
-      try {
-        await plugin.onLoad(this.core);
-        console.log(`🔌 Plugin "${plugin.name}" v${plugin.version} cargado exitosamente`);
-      } catch (err) {
-        console.error(`❌ Error cargando plugin "${plugin.name}":`, err);
-        this.plugins.delete(plugin.name);
-        this.manifests.delete(plugin.name);
-      }
-    } else {
-      console.log(`🔌 Plugin "${plugin.name}" v${plugin.version} registrado`);
+    // Validar permisos
+    const hasAllPermissions = await this.validatePermissions(plugin.permissions);
+    if (!hasAllPermissions) {
+      console.warn(`[Plugin] ${plugin.name} no tiene permisos suficientes`);
+      return;
     }
+
+    try {
+      if (plugin.onLoad) {
+        await plugin.onLoad(this.core);
+      }
+      this.plugins.set(plugin.name, plugin);
+      this.loaded.add(plugin.name);
+      console.log(`[Plugin] ✅ Cargado: ${plugin.name} v${plugin.version}`);
+      await this.saveManifest();
+    } catch (err) {
+      console.error(`[Plugin] ❌ Error cargando ${plugin.name}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Carga un plugin desde un archivo.
+   */
+  async loadPluginFromFile(filePath: string): Promise<void> {
+    const fullPath = resolve(filePath);
+    try {
+      const module = await import(fullPath);
+      const plugin: Plugin = module.default || module;
+      if (!plugin.name || !plugin.version) {
+        throw new Error('El plugin debe exportar { name, version }');
+      }
+      await this.load(plugin);
+    } catch (err) {
+      console.error(`[Plugin] ❌ Error cargando desde ${filePath}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Carga todos los plugins de un directorio.
+   */
+  async loadPluginsFromDirectory(dir: string): Promise<number> {
+    let count = 0;
+    try {
+      const { readdir } = await import('fs/promises');
+      const files = await readdir(dir);
+      for (const file of files) {
+        if (file.endsWith('.js') || file.endsWith('.ts')) {
+          await this.loadPluginFromFile(join(dir, file));
+          count++;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Plugin] No se pudo leer el directorio ${dir}:`, err);
+    }
+    return count;
   }
 
   /**
    * Descarga un plugin.
    */
-  async unload(pluginName: string): Promise<void> {
-    const plugin = this.plugins.get(pluginName);
+  async unload(name: string): Promise<void> {
+    const plugin = this.plugins.get(name);
     if (!plugin) {
-      console.warn(`⚠️ Plugin "${pluginName}" no encontrado.`);
+      console.warn(`[Plugin] ${name} no está cargado`);
       return;
     }
-
-    // Ejecutar hook de descarga
     if (plugin.onUnload) {
-      try {
-        await plugin.onUnload();
-      } catch (err) {
-        console.error(`Error en onUnload de "${pluginName}":`, err);
-      }
+      await plugin.onUnload();
     }
-
-    this.plugins.delete(pluginName);
-    this.manifests.delete(pluginName);
-    console.log(`🔌 Plugin "${pluginName}" descargado`);
+    this.plugins.delete(name);
+    this.loaded.delete(name);
+    console.log(`[Plugin] ⬇️ Descargado: ${name}`);
+    await this.saveManifest();
   }
 
   /**
@@ -87,24 +180,132 @@ export class PluginManager {
     }
   }
 
-  /**
-   * Obtiene todas las herramientas aportadas por los plugins.
-   */
-  getAllTools(): ToolDefinition[] {
-    const tools: ToolDefinition[] = [];
+  // ============================================================
+  // VALIDACIÓN DE PERMISOS
+  // ============================================================
 
-    for (const [, plugin] of this.plugins) {
-      if (plugin.tools) {
-        // Prefijar las herramientas con el nombre del plugin para evitar colisiones
-        const prefixedTools = plugin.tools.map(t => ({
-          ...t,
-          name: `${plugin.name}__${t.name}`,
-        }));
-        tools.push(...prefixedTools);
+  private async validatePermissions(permissions: Permission[]): Promise<boolean> {
+    const userApproved = await this.getUserApprovedPermissions();
+
+    for (const perm of permissions) {
+      if (!userApproved.includes(perm)) {
+        const approval = await this.requestPermission(perm);
+        if (!approval) {
+          console.warn(`[Plugin] Permiso denegado: ${perm}`);
+          return false;
+        }
+        userApproved.push(perm);
+        await this.saveApprovedPermissions(userApproved);
       }
     }
 
+    return true;
+  }
+
+  private async getUserApprovedPermissions(): Promise<Permission[]> {
+    try {
+      const data = await readFile(this.manifestPath, 'utf-8');
+      const manifest = JSON.parse(data) as PluginManifest;
+      return manifest.approvedPermissions || [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async saveApprovedPermissions(permissions: Permission[]): Promise<void> {
+    const dir = join(this.core.workspaceRoot, '.devmind', 'plugins');
+    await mkdir(dir, { recursive: true });
+    const existing = await this.getUserApprovedPermissions();
+    await writeFile(
+      this.manifestPath,
+      JSON.stringify({
+        approvedPermissions: [...new Set([...existing, ...permissions])],
+        plugins: this.listPlugins(),
+      }, null, 2),
+      'utf-8'
+    );
+  }
+
+  /**
+   * Solicita permiso al usuario (CLI interactiva).
+   */
+  private async requestPermission(permission: Permission): Promise<boolean> {
+    console.log(`\n🔐 El plugin solicita el permiso: ${permission}`);
+    console.log(`   Descripción: ${PERMISSION_DESCRIPTIONS[permission]}`);
+    console.log(`   ¿Permitir? (y/N)`);
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 30000); // 30s timeout
+
+      process.stdin.once('data', (data) => {
+        clearTimeout(timeout);
+        const answer = data.toString().trim().toLowerCase();
+        resolve(answer === 'y' || answer === 'yes');
+      });
+    });
+  }
+
+  // ============================================================
+  // EJECUCIÓN DE HERRAMIENTAS CON PERMISOS
+  // ============================================================
+
+  /**
+   * Ejecuta una herramienta de un plugin con validación de permisos.
+   */
+  async executeTool(
+    pluginName: string,
+    toolName: string,
+    args: Record<string, unknown>
+  ): Promise<string> {
+    const plugin = this.plugins.get(pluginName);
+    if (!plugin) {
+      throw new Error(`Plugin ${pluginName} no cargado`);
+    }
+
+    const tool = plugin.tools?.find(t => t.name === toolName);
+    if (!tool) {
+      throw new Error(`Herramienta ${toolName} no encontrada en ${pluginName}`);
+    }
+
+    return await tool.handler(args, this.core, plugin.permissions);
+  }
+
+  // ============================================================
+  // UTILIDADES
+  // ============================================================
+
+  /**
+   * Devuelve todas las herramientas de todos los plugins.
+   */
+  getAllTools(): ToolDefinition[] {
+    const tools: ToolDefinition[] = [];
+    for (const plugin of this.plugins.values()) {
+      if (plugin.tools) {
+        for (const tool of plugin.tools) {
+          tools.push({
+            name: `${plugin.name}__${tool.name}`,
+            description: tool.description,
+            parameters: [],
+          });
+        }
+      }
+    }
     return tools;
+  }
+
+  /**
+   * Lista plugins cargados.
+   */
+  listPlugins(): Array<{ name: string; version: string; description?: string; permissions: Permission[]; loadedAt: number }> {
+    return Array.from(this.plugins.values()).map(p => ({
+      name: p.name,
+      version: p.version,
+      description: p.description,
+      permissions: p.permissions,
+      loadedAt: Date.now(),
+    }));
   }
 
   /**
@@ -115,26 +316,64 @@ export class PluginManager {
   }
 
   /**
-   * Lista todos los plugins registrados.
-   */
-  list(): PluginManifest[] {
-    return Array.from(this.manifests.values());
-  }
-
-  /**
    * Verifica si un plugin está cargado.
    */
   isLoaded(name: string): boolean {
-    return this.plugins.has(name);
+    return this.loaded.has(name);
   }
 
-  /**
-   * Habilita o deshabilita un plugin (sin descargarlo).
-   */
-  setEnabled(name: string, enabled: boolean): void {
-    const manifest = this.manifests.get(name);
-    if (manifest) {
-      manifest.enabled = enabled;
+  private async saveManifest(): Promise<void> {
+    try {
+      const dir = join(this.core.workspaceRoot, '.devmind', 'plugins');
+      await mkdir(dir, { recursive: true });
+      const approved = await this.getUserApprovedPermissions();
+      await writeFile(
+        this.manifestPath,
+        JSON.stringify({
+          approvedPermissions: approved,
+          plugins: this.listPlugins(),
+        }, null, 2),
+        'utf-8'
+      );
+    } catch {
+      // No bloquear
     }
   }
 }
+
+// ============================================================
+// PLUGIN DE EJEMPLO
+// ============================================================
+
+export const ExamplePlugin: Plugin = {
+  name: 'example-plugin',
+  version: '1.0.0',
+  description: 'Plugin de ejemplo con herramientas útiles',
+  permissions: ['read:files', 'write:temp'],
+
+  tools: [
+    {
+      name: 'summarize_file',
+      description: 'Resume el contenido de un archivo',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: { type: 'string', description: 'Ruta del archivo' }
+        },
+        required: ['file_path']
+      },
+      handler: async (args, _core, _permissions) => {
+        const content = await readFile(args.file_path as string, 'utf-8');
+        return `Resumen del archivo (primeras 200 caracteres):\n${content.slice(0, 200)}...`;
+      }
+    }
+  ],
+
+  onLoad: (_core) => {
+    console.log('📦 Plugin de ejemplo cargado correctamente');
+  },
+
+  onUnload: () => {
+    console.log('📦 Plugin de ejemplo descargado');
+  }
+};

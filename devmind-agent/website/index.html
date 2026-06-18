@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevMind Agent — Ingeniería de Software Autónoma</title>
+  <meta name="description" content="DevMind es un agente de software autónomo que puede planificar, ejecutar, probar y documentar código sin intervención humana.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #30363d; }
+    .logo { font-size: 1.8em; font-weight: 700; color: #58a6ff; }
+    .logo span { color: #c9d1d9; }
+    .nav a { color: #8b949e; text-decoration: none; margin-left: 30px; transition: color 0.2s; }
+    .nav a:hover { color: #58a6ff; }
+    .hero { text-align: center; padding: 80px 0; }
+    .hero h1 { font-size: 3.5em; font-weight: 800; background: linear-gradient(135deg, #58a6ff, #a371f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 1.3em; color: #8b949e; max-width: 700px; margin: 20px auto; }
+    .hero .cta { margin-top: 30px; }
+    .btn { display: inline-block; padding: 14px 40px; border-radius: 8px; font-weight: 600; text-decoration: none; transition: all 0.3s; }
+    .btn-primary { background: #58a6ff; color: #0d1117; }
+    .btn-primary:hover { background: #79c0ff; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(88,166,255,0.3); }
+    .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; margin-left: 15px; }
+    .btn-secondary:hover { background: #30363d; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; padding: 60px 0; }
+    .feature { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; transition: transform 0.3s; }
+    .feature:hover { transform: translateY(-5px); border-color: #58a6ff; }
+    .feature .icon { font-size: 2.5em; margin-bottom: 15px; }
+    .feature h3 { font-size: 1.2em; margin-bottom: 10px; color: #f0f6fc; }
+    .feature p { color: #8b949e; font-size: 0.95em; }
+    .pricing { padding: 60px 0; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 30px; margin-top: 40px; }
+    .pricing-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; text-align: center; transition: transform 0.3s; }
+    .pricing-card:hover { transform: translateY(-5px); border-color: #58a6ff; }
+    .pricing-card .price { font-size: 2.5em; font-weight: 700; color: #58a6ff; margin: 15px 0; }
+    .pricing-card .price span { font-size: 0.4em; color: #8b949e; }
+    .pricing-card ul { list-style: none; text-align: left; margin: 20px 0; }
+    .pricing-card ul li { padding: 6px 0; color: #8b949e; }
+    .pricing-card ul li::before { content: '✓ '; color: #3fb950; }
+    .pricing-card .btn { width: 100%; text-align: center; }
+    .footer { border-top: 1px solid #30363d; padding: 40px 0; margin-top: 60px; display: flex; justify-content: space-between; align-items: center; color: #8b949e; }
+    .footer a { color: #8b949e; text-decoration: none; margin-left: 20px; }
+    .footer a:hover { color: #58a6ff; }
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2.2em; }
+      .nav a { margin-left: 15px; font-size: 0.9em; }
+      .btn-secondary { margin-left: 0; margin-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">🧠 Dev<span>Mind</span></div>
+      <nav class="nav">
+        <a href="#features">Características</a>
+        <a href="#pricing">Precios</a>
+        <a href="#docs">Docs</a>
+        <a href="https://github.com/cataarias368/devmind-agent">GitHub</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Ingeniería de Software Autónoma</h1>
+      <p>DevMind es un agente que planifica, ejecuta, prueba y documenta código por ti. Trabaja 24/7 mientras tú te enfocas en lo que importa.</p>
+      <div class="cta">
+        <a href="https://github.com/cataarias368/devmind-agent" class="btn btn-primary">Ver en GitHub</a>
+        <a href="#docs" class="btn btn-secondary">Documentación</a>
+      </div>
+      <div style="margin-top: 40px;">
+        <code style="background: #161b22; padding: 12px 24px; border-radius: 8px; display: inline-block; border: 1px solid #30363d; color: #8b949e;">
+          npx devmind-agent "Crear una API REST con Express y TypeScript"
+        </code>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="feature">
+        <div class="icon">🤖</div>
+        <h3>Agente Autónomo</h3>
+        <p>Planifica y ejecuta tareas de desarrollo sin supervisión humana. Lee, escribe, ejecuta comandos y se autocorrige.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🧠</div>
+        <h3>Multi-Agente</h3>
+        <p>5 agentes especializados (Arquitecto, Frontend, Backend, DevOps, QA) trabajando en paralelo.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🎨</div>
+        <h3>Generación de Imágenes</h3>
+        <p>Crea íconos, diagramas técnicos y mockups de UI con CogView. Ideal para documentación y prototipos.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">📚</div>
+        <h3>Documentación Automática</h3>
+        <p>Genera documentación en Markdown, HTML y PDF a partir del código fuente.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🧪</div>
+        <h3>Tests Automáticos</h3>
+        <p>Genera unit tests, integration tests y E2E tests con Playwright.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">⚡</div>
+        <h3>15 Módulos de Rendimiento</h3>
+        <p>Cache semántico, planificación dinámica, ejecución paralela y más.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔌</div>
+        <h3>Plugins Extensibles</h3>
+        <p>Agrega herramientas personalizadas con un sistema de permisos granular.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🌐</div>
+        <h3>Dashboard + Bots + API</h3>
+        <p>Controla DevMind desde la web, Slack, Discord, Telegram o API REST.</p>
+      </div>
+    </section>
+
+    <section id="pricing" class="pricing">
+      <h2 style="text-align:center; font-size:2.2em;">Precios</h2>
+      <p style="text-align:center; color:#8b949e;">Elegí el plan que mejor se adapte a vos</p>
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <h3>Free</h3>
+          <div class="price">$0</div>
+          <ul>
+            <li>Agente autónomo básico</li>
+            <li>100 requests/día</li>
+            <li>Sin memoria persistente</li>
+            <li>Anuncios en dashboard</li>
+          </ul>
+          <a href="#" class="btn btn-secondary">Empezar</a>
+        </div>
+        <div class="pricing-card" style="border-color:#58a6ff;">
+          <h3>Pro</h3>
+          <div class="price">$19<span>/mes</span></div>
+          <ul>
+            <li>Agente autónomo completo</li>
+            <li>500 requests/día</li>
+            <li>Memoria persistente</li>
+            <li>Generación de imágenes</li>
+            <li>Multi-agente</li>
+            <li>Sin anuncios</li>
+          </ul>
+          <a href="#" class="btn btn-primary">Suscribirse</a>
+        </div>
+        <div class="pricing-card">
+          <h3>Team</h3>
+          <div class="price">$15<span>/seat/mes</span></div>
+          <ul>
+            <li>Todo lo de Pro</li>
+            <li>2000 requests/día</li>
+            <li>Integración GitHub</li>
+            <li>Modo observador</li>
+            <li>SLA garantizado</li>
+            <li>Soporte prioritario</li>
+          </ul>
+          <a href="#" class="btn btn-secondary">Contactar</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>© 2026 DevMind — Hecho con ❤️ por <a href="https://github.com/cataarias368">Cata Arias</a></span>
+      <div>
+        <a href="https://github.com/cataarias368/devmind-agent">GitHub</a>
+        <a href="#">Twitter</a>
+        <a href="#">Discord</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
