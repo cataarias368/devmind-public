@@ -1,0 +1,502 @@
+   800→
+   801→  async process(operation: string): Promise<any[]> {
+   802→
+   803→    return batch.map(params => ({ status: 'processed', params }));
+   804→}
+   805→                  - generic
+   806→                  - generic
+   807→                    - StaticText "  private batches: Map<string, any[]> = new Map();"
+   808→                  - generic
+   809→                  - LineBreak "\n"
+   810→                  - generic
+   811→                    - StaticText "  add(operation: string, params: any): void {"
+   812→                  - generic
+   813→                  - generic
+   814→                  - StaticText "    }"
+   815→                  - StaticText "    "
+   816→                  - generic
+   817→                  - generic
+   818→                  - LineBreak "\n"
+   819→                  - generic
+   820→                  - generic
+   821→                  - StaticText "    }"
+   822→                  - StaticText "  }"
+   823→                  - LineBreak "\n"
+   824→                  - generic
+   825→                    - StaticText "  async process(operation: string): Promise<any[]> {"
+   826→                  - generic
+   827→                  - generic
+   828→                  - LineBreak "\n"
+   829→                  - generic
+   830→                  - generic
+   831→                    - StaticText "    return batch.map(params => ({ status: 'processed', params }));"
+   832→            - separator
+   833→            - heading "5. Mejora Continua" [level=3, ref=e33]
+   834→            - paragraph
+   835→              - strong
+   836→                - StaticText "Archivo: src/tasks/self-evaluation.ts"
+   837→            - generic
+   838→              - StaticText "typescript"
+   839→              - generic "Copy" [ref=e105] focusable [tabindex]
+   840→                - button [ref=e180]
+   841→              - generic
+   842→                - textbox [ref=e181]: import * as fs from 'fs/promises';
+   843→export class SelfEvaluator {
+   844→  private metrics: Metric[] = [];
+   845→
+   846→  async record(task: string, result: TaskResult): Promise<void> {
+   847→    const metric: Metric = {
+   848→      timestamp: Date.now(),
+   849→      success: result.success,
+   850→      steps: result.steps,
+   851→      tokens: 0, // Se obtiene del LLM response real
+   852→      time: 0      // Se obtiene del medidor de tiempo real
+   853→
+   854→  async evaluate(): Promise<{ score: string; details: any }> {
+   855→    if (this.metrics.length === 0) return { score: 'no-data', details: {} };
+   856→
+   857→    return { score, details: { successRate, avgSteps: this.getAvgSteps() } };
+   858→
+   859→  private getAvgSteps(): number {
+   860→
+   861→                  - generic
+   862→                  - generic
+   863→                  - generic
+   864→                  - LineBreak "\n"
+   865→                  - generic
+   866→                  - generic
+   867→                    - StaticText "  private metrics: Metric[] = [];"
+   868→                  - LineBreak "\n"
+   869→                  - generic
+   870→                    - StaticText "  async record(task: string, result: TaskResult): Promise<void> {"
+   871→                  - generic
+   872→                    - StaticText "    const metric: Metric = {"
+   873→                  - generic
+   874→                    - StaticText "      timestamp: Date.now(),"
+   875→                  - generic
+   876→                    - StaticText "      success: result.success,"
+   877→                  - generic
+   878→                    - StaticText "      steps: result.steps,"
+   879→                  - generic
+   880→                    - StaticText "      tokens: 0, // Se obtiene del LLM response real"
+   881→                  - generic
+   882→                    - StaticText "      time: 0      // Se obtiene del medidor de tiempo real"
+   883→                  - StaticText "    };"
+   884→                  - generic
+   885→                  - generic
+   886→                  - StaticText "  }"
+   887→                  - LineBreak "\n"
+   888→                  - generic
+   889→                    - StaticText "  async evaluate(): Promise<{ score: string; details: any }> {"
+   890→                  - generic
+   891→                    - StaticText "    if (this.metrics.length === 0) return { score: 'no-data', details: {} };"
+   892→                  - LineBreak "\n"
+   893→                  - generic
+   894→                  - generic
+   895→                  - StaticText "    "
+   896→                  - generic
+   897→                  - generic
+   898→                  - generic
+   899→                  - LineBreak "\n"
+   900→                  - generic
+   901→                    - StaticText "    return { score, details: { successRate, avgSteps: this.getAvgSteps() } };"
+   902→                  - StaticText "  }"
+   903→                  - LineBreak "\n"
+   904→                  - generic
+   905→                    - StaticText "  private getAvgSteps(): number {"
+   906→            - paragraph
+   907→              - strong
+   908→                - StaticText "Archivo: src/tasks/improvement-suggestions.ts"
+   909→            - generic
+   910→              - StaticText "typescript"
+   911→              - generic "Copy" [ref=e106] focusable [tabindex]
+   912→                - button [ref=e182]
+   913→              - generic
+   914→                - textbox [ref=e183]: import { SelfEvaluator } from './self-evaluation';
+   915→export class ImprovementSuggestions {
+   916→  constructor(private evaluator: SelfEvaluator) {}
+   917→
+   918→  async suggest(evaluator: SelfEvaluator): Promise<string[]> {
+   919→    const suggestions: string[] = [];
+   920→}
+   921→                  - generic
+   922→                  - LineBreak "\n"
+   923→                  - generic
+   924→                  - generic
+   925→                    - StaticText "  constructor(private evaluator: SelfEvaluator) {}"
+   926→                  - LineBreak "\n"
+   927→                  - generic
+   928→                    - StaticText "  async suggest(evaluator: SelfEvaluator): Promise<string[]> {"
+   929→                  - generic
+   930→                  - generic
+   931→                    - StaticText "    const suggestions: string[] = [];"
+   932→            - separator
+   933→            - heading "6. Paralelización" [level=3, ref=e34]
+   934→            - paragraph
+   935→              - StaticText "**Archivo: src/tasks/independent-execution.ts`"
+   936→            - generic
+   937→              - StaticText "typescript"
+   938→              - generic "Copy" [ref=e107] focusable [tabindex]
+   939→                - button [ref=e184]
+   940→              - generic
+   941→                - textbox [ref=e185]: import { LLMProvider } from './types';
+   942→export class IndependentExecution {
+   943→  createIsolatedTools(tools: any[]): any[] {
+   944→
+   945→  async executeParallel(tasks: any[], tools: any[], llmProvider: LLMProvider): Promise<any[]> {
+   946→
+   947→  async executeWithIsolation(task: string, tools: any[], llmProvider: LLMProvider): Promise<any> {
+   948→    console.log(`[Isolated] Ejecutando: ${task}`);
+   949→    return { status: 'done', task };
+   950→}
+   951→                  - generic
+   952→                  - LineBreak "\n"
+   953→                  - generic
+   954→                  - generic
+   955→                    - StaticText "  createIsolatedTools(tools: any[]): any[] {"
+   956→                  - generic
+   957→                  - generic
+   958→                  - StaticText "  }"
+   959→                  - LineBreak "\n"
+   960→                  - generic
+   961→                    - StaticText "  async executeParallel(tasks: any[], tools: any[], llmProvider: LLMProvider): Promise<any[]> {"
+   962→                  - generic
+   963→                  - generic
+   964→                  - StaticText "    );"
+   965→                  - StaticText "  }"
+   966→                  - LineBreak "\n"
+   967→                  - generic
+   968→                    - StaticText "  async executeWithIsolation(task: string, tools: any[], llmProvider: LLMProvider): Promise<any> {"
+   969→                  - generic
+   970→                  - generic
+   971→                    - StaticText "    console.log(`[Isolated] Ejecutando: ${task}`);"
+   972→                  - generic
+   973→                    - StaticText "    return { status: 'done', task };"
+   974→            - paragraph
+   975→              - StaticText "**Archivo: src/tasks/parallel-pipeline.ts`"
+   976→            - generic
+   977→              - StaticText "typescript"
+   978→              - generic "Copy" [ref=e108] focusable [tabindex]
+   979→                - button [ref=e186]
+   980→              - generic
+   981→                - textbox [ref=e187]: import { LLMProvider } from './types';
+   982→export class ParallelPipeline {
+   983→  async executePipeline(stages: ((data: any) => Promise<any>)[], input: any, llmProvider: LLMProvider): Promise<any[]> {
+   984→    const results: any[] = [];
+   985→}
+   986→                  - generic
+   987→                  - LineBreak "\n"
+   988→                  - generic
+   989→                  - generic
+   990→                    - StaticText "  async executePipeline(stages: ((data: any) => Promise<any>)[], input: any, llmProvider: LLMProvider): Promise<any[]> {"
+   991→                  - generic
+   992→                  - generic
+   993→                    - StaticText "    const results: any[] = [];"
+   994→            - separator
+   995→            - heading "7. Monitoreo" [level=3, ref=e35]
+   996→            - paragraph
+   997→              - strong
+   998→                - StaticText "Archivo: src/tasks/health-check.ts"
+   999→            - generic
+  1000→              - StaticText "typescript"
+  1001→              - generic "Copy" [ref=e109] focusable [tabindex]
+  1002→                - button [ref=e188]
+  1003→              - generic
+  1004→                - textbox [ref=e189]: import * as os from 'os';
+  1005→export class HealthCheck {
+  1006→  check(): { status: 'healthy' | 'warning' | 'critical'; issues: string[] } {
+  1007→    const issues: string[] = [];
+  1008→
+  1009→    if (issues.length > 0 && issues.some(i => i.includes("crític"))) {
+  1010→      return { status: 'critical', issues };
+  1011→    }
+  1012→    if (issues.length > 0) {
+  1013→      return { status: 'warning', issues };
+  1014→    return { status: 'healthy', issues: [] };
+  1015→}
+  1016→                  - generic
+  1017→                  - LineBreak "\n"
+  1018→                  - generic
+  1019→                  - generic
+  1020→                    - StaticText "  check(): { status: 'healthy' | 'warning' | 'critical'; issues: string[] } {"
+  1021→                  - generic
+  1022→                    - StaticText "    const issues: string[] = [];"
+  1023→                  - LineBreak "\n"
+  1024→                  - generic
+  1025→                  - generic
+  1026→                  - LineBreak "\n"
+  1027→                  - generic
+  1028→                  - generic
+  1029→                  - generic
+  1030→                  - generic
+  1031→                  - LineBreak "\n"
+  1032→                  - generic
+  1033→                  - generic
+  1034→                  - LineBreak "\n"
+  1035→                  - generic
+  1036→                  - generic
+  1037→                  - generic
+  1038→                  - LineBreak "\n"
+  1039→                  - generic
+  1040→                  - generic
+  1041→                    - StaticText "      return { status: 'critical', issues };"
+  1042→                  - StaticText "    }"
+  1043→                  - generic
+  1044→                  - generic
+  1045→                    - StaticText "      return { status: 'warning', issues };"
+  1046→                  - StaticText "    }"
+  1047→                  - generic
+  1048→                    - StaticText "    return { status: 'healthy', issues: [] };"
+  1049→            - paragraph
+  1050→              - strong
+  1051→                - StaticText "Archivo: src/tasks/alerts.ts"
+  1052→            - generic
+  1053→              - StaticText "text"
+  1054→              - generic "Copy" [ref=e110] focusable [tabindex]
+  1055→                - button [ref=e190]
+  1056→              - generic
+  1057→                - textbox [ref=e191]: import * as fs from 'fs/promises';
+  1058→export class Alerts {
+  1059→  private alerts: { level: string; message: string; timestamp: number; }[] = [];
+  1060→
+  1061→  async send(level: 'info' | 'warning' | 'critical', message: string): Promise<void> {
+  1062→    const alert = { level, message, timestamp: Date.now() };
+  1063→
+  1064→    // Slack Webhook
+  1065→    if (level === 'critical' && process.env.SLACK_WEBHOOK_URL) {
+  1066→      await fetch(process.env.SLACK_WEBHOOK_URL, {
+  1067→        method: 'POST',
+  1068→        headers: { 'Content-Type': 'application/json' },
+  1069→        body: JSON.stringify({ text: `🚨 DevMind Alert (${level.toUpperCase()}): ${message}` })
+  1070→
+  1071→  private async save(): Promise<void> {
+  1072→    await fs.mkdir(dir, { recursive: true });
+  1073→}
+  1074→                  - StaticText "  private alerts: { level: string; message: string; timestamp: number; }[] = [];"
+  1075→                  - StaticText "  async send(level: 'info' | 'warning' | 'critical', message: string): Promise<void> {"
+  1076→                  - StaticText "    const alert = { level, message, timestamp: Date.now() };"
+  1077→                  - StaticText "        method: 'POST',"
+  1078→                  - StaticText "        headers: { 'Content-Type': 'application/json' },"
+  1079→                  - StaticText "        body: JSON.stringify({ text: `🚨 DevMind Alert (${level.toUpperCase()}): ${message}` })"
+  1080→                  - StaticText "  private async save(): Promise<void> {"
+  1081→                  - StaticText "    await fs.mkdir(dir, { recursive: true });"
+  1082→            - separator
+  1083→            - heading "8. TaskManager (Orquestador)" [level=3, ref=e36]
+  1084→            - paragraph
+  1085→              - strong
+  1086→                - StaticText "Archivo: src/tasks/index.ts"
+  1087→            - generic
+  1088→              - StaticText "typescript"
+  1089→              - generic "Copy" [ref=e111] focusable [tabindex]
+  1090→                - button [ref=e192]
+  1091→              - generic
+  1092→                - textbox [ref=e193]: import { ContextCompressor } from './context-compression';
+  1093→
+  1094→  async startAllTasks(): Promise<void> {
+  1095→    console.log('🚀 Iniciando tareas de rendimiento...');
+  1096→                  - generic
+  1097→                  - generic
+  1098→                  - generic
+  1099→                  - generic
+  1100→                  - generic
+  1101→                  - generic
+  1102→                  - generic
+  1103→                  - generic
+  1104→                  - generic
+  1105→                  - generic
+  1106→                  - generic
+  1107→                  - generic
+  1108→                  - generic
+  1109→                  - generic
+  1110→                  - generic
+  1111→                  - generic
+  1112→                  - LineBreak "\n"
+  1113→                  - generic
+  1114→                  - generic
+  1115→                  - generic
+  1116→                  - generic
+  1117→                  - generic
+  1118→                  - generic
+  1119→                  - generic
+  1120→                  - generic
+  1121→                  - generic
+  1122→                  - generic
+  1123→                  - generic
+  1124→                  - generic
+  1125→                  - generic
+  1126→                  - generic
+  1127→                  - generic
+  1128→                  - generic
+  1129→                  - LineBreak "\n"
+  1130→                  - generic
+  1131→                    - StaticText "  async startAllTasks(): Promise<void> {"
+  1132→            - separator
+  1133→            - heading "9. Integración en src/agent.ts" [level=3, ref=e37]
+  1134→              - StaticText "9. Integración en "
+  1135→              - code [ref=e64] clickable [cursor:pointer]
+  1136→            - generic
+  1137→              - StaticText "typescript"
+  1138→              - generic "Copy" [ref=e112] focusable [tabindex]
+  1139→                - button [ref=e194]
+  1140→              - generic
+  1141→                - textbox [ref=e195]: // src/agent.ts
+  1142→export async function agentLoop(userObjective: string, config: AgentConfig): Promise<any> {
+  1143→
+  1144→  const messages: any[] = [
+  1145→    { role: 'system', content: SYSTEM_PROMPT.replace('{WORKSPACE_ROOT}', workspaceRoot) }
+  1146→
+  1147→  messages.push({ role: 'user', content: userObjective });
+  1148→
+  1149→  let steps = 0;
+  1150→  
+  1151→  // Bucle principal
+  1152→  while (steps < maxSteps) {
+  1153→    // --- TAREA 1.1: COMPRESIÓN DE CONTEXTO ---
+  1154→    // --- TAREA 1.2: VENTANA DESLIZANTE ---
+  1155→    const activeMessages = compressedContext; // (Simplificado: usar el array comprimido)
+  1156→
+  1157→    // --- TAREA 2.1: CACHE SEMÁNTICO ---
+  1158→    const cacheKey = JSON.stringify({ role: 'user', content: activeMessages[activeMessages.length - 1] });
+  1159→    const cachedResult = await taskManager.getCache().get(cacheKey);
+  1160→    if (cachedResult) {
+  1161→        return { success: true, summary: `Resultado cacheado: ${cachedResult}`, steps };
+  1162→                  - StaticText "// src/agent.ts"
+  1163→                  - StaticText "// ... imports ..."
+  1164→                  - LineBreak "\n"
+  1165→                  - StaticText "// Importar TaskManager"
+  1166→                  - generic
+  1167→                  - LineBreak "\n"
+  1168→                  - generic
+  1169→                    - StaticText "export async function agentLoop(userObjective: string, config: AgentConfig): Promise<any> {"
+  1170→                  - generic
+  1171→                  - StaticText "  "
+  1172→                  - generic
+  1173→                  - generic
+  1174→                  - generic
+  1175→                  - LineBreak "\n"
+  1176→                  - generic
+  1177→                    - StaticText "  const messages: any[] = ["
+  1178→                  - generic
+  1179→                    - StaticText "    { role: 'system', content: SYSTEM_PROMPT.replace('{WORKSPACE_ROOT}', workspaceRoot) }"
+  1180→                  - StaticText "  ];"
+  1181→                  - LineBreak "\n"
+  1182→                  - generic
+  1183→                    - StaticText "  messages.push({ role: 'user', content: userObjective });"
+  1184→                  - LineBreak "\n"
+  1185→                  - generic
+  1186→                  - StaticText "  "
+  1187→                  - generic
+  1188→                  - generic
+  1189→                  - generic
+  1190→                  - StaticText "    "
+  1191→                  - generic
+  1192→                    - StaticText "    // --- TAREA 1.1: COMPRESIÓN DE CONTEXTO ---"
+  1193→                  - generic
+  1194→                  - StaticText "    "
+  1195→                  - generic
+  1196→                    - StaticText "    // --- TAREA 1.2: VENTANA DESLIZANTE ---"
+  1197→                  - generic
+  1198→                    - StaticText "    const activeMessages = compressedContext; // (Simplificado: usar el array comprimido)"
+  1199→                  - LineBreak "\n"
+  1200→                  - generic
+  1201→                    - StaticText "    // --- TAREA 2.1: CACHE SEMÁNTICO ---"
+  1202→                  - generic
+  1203→                    - StaticText "    const cacheKey = JSON.stringify({ role: 'user', content: activeMessages[activeMessages.length - 1] });"
+  1204→                  - generic
+  1205→                  - generic
+  1206→                  - generic
+  1207→                    - StaticText "        return { success: true, summary: `Resultado cacheado: ${cachedResult}`, steps };"
+  1208→            - separator
+  1209→            - heading "10. Integración en src/index.ts" [level=3, ref=e38]
+  1210→              - StaticText "10. Integración en "
+  1211→              - code [ref=e65] clickable [cursor:pointer]
+  1212→            - generic
+  1213→              - StaticText "typescript"
+  1214→              - generic "Copy" [ref=e113] focusable [tabindex]
+  1215→                - button [ref=e196]
+  1216→              - generic
+  1217→                - textbox [ref=e197]: // src/index.ts
+  1218→}
+  1219→            - heading "Resumen de Archivos Generados" [level=3, ref=e39]
+  1220→            - list
+  1221→              - listitem [level=1]
+  1222→                - StaticText ": Tipos compartidos."
+  1223→              - listitem [level=1]
+  1224→                - StaticText ": Compresión inteligente del historial."
+  1225→              - listitem [level=1]
+  1226→                - StaticText ": Ventana dinámica de mensajes."
+  1227→              - listitem [level=1]
+  1228→                - StaticText ": Selección óptima de herramientas."
+  1229→              - listitem [level=1]
+  1230→                - StaticText ": Caché semántico para respuestas."
+  1231→              - listitem [level=1]
+  1232→                - StaticText ": Memoria a corto plazo."
+  1233→              - listitem [level=1]
+  1234→                - code [ref=e114] clickable [cursor:pointer]
+  1235→                - StaticText ": Memoria a largo plazo (episodios)."
+  1236→              - listitem [level=1]
+  1237→                - StaticText "**src/tasks/step-anticipation.ts`: Predicción de pasos."
+  1238→              - listitem [level=1]
+  1239→                - StaticText ": Replanificación dinámica."
+  1240→              - listitem [level=1]
+  1241→                - StaticText ": Procesamiento por lotes."
+  1242→              - listitem [level=1]
+  1243→                - StaticText ": Evaluación de métricas."
+  1244→              - listitem [level=1]
+  1245→                - StaticText ": Sugerencias automáticas."
+  1246→              - listitem [level=1]
+  1247→                - StaticText ": Ejecución paralela aislada."
+  1248→              - listitem [level=1]
+  1249→                - StaticText ": Pipeline paralelo."
+  1250→              - listitem [level=1]
+  1251→                - StaticText ": Verificación de salud del sistema."
+  1252→              - listitem [level=1]
+  1253→                - StaticText ": Sistema de alertas."
+  1254→              - listitem [level=1]
+  1255→                - StaticText ": Orquestador de tareas."
+  1256→            - paragraph
+  1257→              - StaticText "Copia y pega los archivos en tu carpeta "
+  1258→              - code [ref=e66] clickable [cursor:pointer]
+  1259→              - StaticText " y actualiza "
+  1260→              - code [ref=e67] clickable [cursor:pointer]
+  1261→              - StaticText " e "
+  1262→              - code [ref=e68] clickable [cursor:pointer]
+  1263→              - StaticText " según las secciones anteriores."
+  1264→            - generic "Copy" [ref=e8] focusable [tabindex]
+  1265→          - generic
+  1266→            - generic
+  1267→              - generic
+  1268→                - StaticText "# 📋 PROMPT COMPLETO - PUBLICIDAD EN DASHBOARD + SISTEMA COMPLETO\n\nPerfecto. Te entrego el **prompt único y completo** que incluye TODOS los módulos de publicidad integrados en el sistema DevMind v2.0.\n\n---\n\n```\nVas a implementar el sistema completo de publicidad no invasiva en el dashboard de DevMind Agent, integrado con todo el sistema existente.\n\n═══════════════════════════════════════════════════════════════════════════════\nOBJETIVO\n═══════════════════════════════════════════════════════════════════════════════\n\nImplementar un sistema de publicidad que:\n1. Sea NO INVASIVO (no interrumpe el flujo de trabajo)\n2. Genere ingresos pasivos para el proyecto\n3. Sea configurable y trackeable\n4. Permita a los usuarios Pro ocultar anuncios\n5. Tenga un panel de administración\n\n═══════════════════════════════════════════════════════════════════════════════\nMÓDULO 1: SISTEMA DE PUBLICIDAD (src/advertising.ts)\n═══════════════════════════════════════════════════════════════════════════════\n\nCrear el sistema completo de gestión de publicidad.\n\nRequisitos:\n- Gestión de anuncios (CRUD completo)\n- Segmentación por tipo de usuario (free/pro/enterprise)\n- Tracking de impresiones y clicks\n- Sistema de prioridades y rotación\n- Cache de anuncios en .devmind/ads.json\n- Estadísticas de rendimiento\n\nCódigo completo de src/advertising.ts:\n\n```typescript\n// src/advertising.ts\nimport * as fs from 'fs/promises';\nimport * as path from 'path';\n\nexport interface AdBanner {\n  id: string;\n  type: 'banner' | 'sidebar' | 'footer' | 'modal' | 'inline';\n  title: string;\n  description: string;\n  imageUrl: string;\n  linkUrl: string;\n  ctaText: string;\n  priority: number;\n  isActive: boolean;\n  impressions: number;\n  clicks: number;\n  conversionRate: number;\n  startDate: string;\n  endDate: string;\n  targetAudience: string[];\n  placement: 'top' | 'bottom' | 'sidebar' | 'inline';\n}\n\nexport interface AdConfig {\n  showAds: boolean;\n  adRefreshInterval: number;\n  maxAdsPerPage: number;\n  premiumAdvertisers: string[];\n}\n\nexport class AdvertisingManager {\n  private ads: AdBanner[] = [];\n  private config: AdConfig;\n  private impressions: Map<string, number> = new Map();\n  private clicks: Map<string, number> = new Map();\n  private closedAds: Set<string> = new Set();\n\n  constructor(config: Partial<AdConfig> = {}) {\n    this.config = {\n      showAds: true,\n      adRefreshInterval: 30000,\n      maxAdsPerPage: 3,\n      premiumAdvertisers: [],\n      ...config\n    };\n    this.loadAds();\n    this.loadClosedAds();\n  }\n\n  private getDefaultAds(): AdBanner[] {\n    return [\n      {\n        id: 'devmind-pro',\n        type: 'banner',\n        title: '🧠 ¿Quieres más poder?',\n        description: 'Actualiza a DevMind Pro y obtén acceso ilimitado a todas las herramientas. Sin límites, con memoria infinita.',\n        imageUrl: '/assets/pro-banner.png',\n        linkUrl: '/pricing',\n        ctaText: 'Ver Planes',\n        priority: 10,\n        isActive: true,\n        impressions: 0,\n        clicks: 0,\n        conversionRate: 0,\n        startDate: new Date().toISOString(),\n        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),\n        targetAudience: ['free'],\n        placement: 'top'\n      },\n      {\n        id: 'sponsor-railway',\n        type: 'banner',\n        title: '🚀 Despliega con Railway',\n        description: 'El hosting más fácil para tus proyectos. $5 de crédito al registrarte con código DEVMIND.',\n        imageUrl: 'https://railway.app/brand/logo-dark.png',\n        linkUrl: 'https://railway.app?ref=devmind',\n        ctaText: 'Probar Railway',\n        priority: 8,\n        isActive: true,\n        impressions: 0,\n        clicks: 0,\n        conversionRate: 0,\n        startDate: new Date().toISOString(),\n        endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),\n        targetAudience: ['all'],\n        placement: 'top'\n      },\n      {\n        id: 'sponsor-educative',\n        type: 'sidebar',\n        title: '📚 Aprende con Educative',\n        description: 'Cursos interactivos de programación. 20% off con código DEVMIND20.',\n        imageUrl: 'https://educative.io/assets/images/logo.png',\n        linkUrl: 'https://educative.io?ref=devmind',\n        ctaText: 'Ver Cursos',\n        priority: 7,\n        isActive: true,\n        impressions: 0,\n        clicks: 0,\n        conversionRate: 0,\n        startDate: new Date().toISOString(),\n        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),\n        targetAudience: ['all'],\n        placement: 'sidebar'\n      },\n      {\n        id: 'sponsor-vercel',\n        type: 'footer',\n        title: 'Vercel',\n        description: 'El mejor hosting para aplicaciones modernas. Despliega con un click.',\n        imageUrl: 'https://vercel.com/favicon.ico',\n        linkUrl: 'https://vercel.com?ref=devmind',\n        ctaText: 'Desplegar',\n        priority: 5,\n        isActive: true,\n        impressions: 0,\n        clicks: 0,\n        conversionRate: 0,\n        startDate: new Date().toISOString(),\n        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),\n        targetAudience: ['all'],\n        placement: 'bottom'\n      }\n    ];\n  }\n\n  private async loadAds(): Promise<void> {\n    try {\n      const adPath = path.join(process.cwd(), '.devmind', 'ads.json');\n      const data = await fs.readFile(adPath, 'utf-8');\n      this.ads = JSON.parse(data);\n    } catch {\n      this.ads = this.getDefaultAds();\n      await this.saveAds();\n    }\n  }\n\n  private async loadClosedAds(): Promise<void> {\n    try {\n      const closedPath = path.join(process.cwd(), '.devmind', 'closed-ads.json');\n      const data = await fs.readFile(closedPath, 'utf-8');\n      const closed = JSON.parse(data);\n      this.closedAds = new Set(closed);\n    } catch {\n      this.closedAds = new Set();\n    }\n  }\n\n  async saveAds(): Promise<void> {\n    const adPath = path.join(process.cwd(), '.devmind', 'ads.json');\n    const dir = path.dirname(adPath);\n    await fs.mkdir(dir, { recursive: true });\n    await fs.writeFile(adPath, JSON.stringify(this.ads, null, 2), 'utf-8');\n  }\n\n  async saveClosedAds(): Promise<void> {\n    const closedPath = path.join(process.cwd(), '.devmind', 'closed-ads.json');\n    await fs.writeFile(closedPath, JSON.stringify(Array.from(this.closedAds), null, 2), 'utf-8');\n  }\n\n  getAdsForUser(userPlan: string = 'free', limit: number = 3): AdBanner[] {\n    if (!this.config.showAds) return [];\n\n    const now = new Date();\n    const available = this.ads.filter(ad => \n      ad.isActive &&\n      new Date(ad.startDate) <= now &&\n      new Date(ad.endDate) >= now &&\n      (ad.targetAudience.includes('all') || ad.targetAudience.includes(userPlan)) &&\n      !this.closedAds.has(ad.id)\n    );\n\n    // Si es usuario Pro, mostrar menos anuncios\n    const maxAds = userPlan === 'pro' ? 1 : userPlan === 'enterprise' ? 0 : limit;\n\n    available.sort((a, b) => b.priority - a.priority);\n\n    const result: AdBanner[] = [];\n    const placements = ['top', 'sidebar', 'bottom', 'inline'];\n    \n    for (const placement of placements) {\n      const ad = available.find(a => a.placement === placement && !result.includes(a));\n      if (ad) result.push(ad);\n      if (result.length >= maxAds) break;\n    }\n\n    // Registrar impresiones\n    for (const ad of result) {\n      this.impressions.set(ad.id, (this.impressions.get(ad.id) || 0) + 1);\n      ad.impressions++;\n    }\n\n    return result;\n  }\n\n  trackClick(adId: string): void {\n    const ad = this.ads.find(a => a.id === adId);\n    if (ad) {\n      this.clicks.set(adId, (this.clicks.get(adId) || 0) + 1);\n      ad.clicks++;\n      const impressions = this.impressions.get(adId) || 0;\n      ad.conversionRate = impressions > 0 ? (ad.clicks / impressions) * 100 : 0;\n      this.saveAds();\n    }\n  }\n\n  closeAd(adId: string): void {\n    this.closedAds.add(adId);\n    this.saveClosedAds();\n  }\n\n  getStats(): any {\n    const totalImpressions = Array.from(this.impressions.values()).reduce((a, b) => a + b, 0);\n    const totalClicks = Array.from(this.clicks.values()).reduce((a, b) => a + b, 0);\n    const overallCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;\n\n    return {\n      totalImpressions,\n      totalClicks,\n      overallCTR: overallCTR.toFixed(2) + '%',\n      ads: this.ads.map(ad => ({\n        id: ad.id,\n        title: ad.title,\n        impressions: ad.impressions,\n        clicks: ad.clicks,\n        ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) + '%' : '0%',\n        conversionRate: ad.conversionRate.toFixed(2) + '%',\n        isActive: ad.isActive\n      }))\n    };\n  }\n\n  async addAd(ad: Omit<AdBanner, 'impressions' | 'clicks' | 'conversionRate'>): Promise<void> {\n    const newAd: AdBanner = {\n      ...ad,\n      impressions: 0,\n      clicks: 0,\n      conversionRate: 0\n    };\n    this.ads.push(newAd);\n    await this.saveAds();\n  }\n\n  async removeAd(adId: string): Promise<void> {\n    this.ads = this.ads.filter(a => a.id !== adId);\n    await this.saveAds();\n  }\n\n  async updateAd(adId: string, updates: Partial<AdBanner>): Promise<void> {\n    const ad = this.ads.find(a => a.id === adId);\n    if (ad) {\n      Object.assign(ad, updates);\n      await this.saveAds();\n    }\n  }\n\n  async toggleAd(adId: string, active: boolean): Promise<void> {\n    const ad = this.ads.find(a => a.id === adId);\n    if (ad) {\n      ad.isActive = active;\n      await this.saveAds();\n    }\n  }\n\n  getConfig(): AdConfig {\n    return this.config;\n  }\n\n  async updateConfig(config: Partial<AdConfig>): Promise<void> {\n    Object.assign(this.config, config);\n    const configPath = path.join(process.cwd(), '.devmind', 'ad-config.json');\n    await fs.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf-8');\n  }\n}\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nMÓDULO 2: INTEGRACIÓN EN EL DASHBOARD (src/dashboard.ts - MODIFICADO)\n═══════════════════════════════════════════════════════════════════════════════\n\nIntegrar el sistema de publicidad en el dashboard existente.\n\nAñadir al DashboardServer:\n\n1. Importar AdvertisingManager\n2. Inicializar en el constructor\n3. Inyectar anuncios en el HTML\n4. Endpoints para tracking\n\nCódigo a añadir en src/dashboard.ts:\n\n```typescript\n// src/dashboard.ts - AÑADIR AL INICIO\nimport { AdvertisingManager, AdBanner } from './advertising';\n\n// En el constructor\nconstructor(config: DashboardConfig) {\n  // ... código existente ...\n  this.adManager = new AdvertisingManager({\n    showAds: true,\n    maxAdsPerPage: 3,\n    adRefreshInterval: 30000\n  });\n}\n\n// Añadir en handleAPI()\nif (url.pathname === '/api/ad/click' && req.method === 'POST') {\n  const body = await this.parseBody(req);\n  this.adManager.trackClick(body.adId);\n  this.jsonResponse(res, 200, { success: true });\n  return;\n}\n\nif (url.pathname === '/api/ad/close' && req.method === 'POST') {\n  const body = await this.parseBody(req);\n  this.adManager.closeAd(body.adId);\n  this.jsonResponse(res, 200, { success: true });\n  return;\n}\n\nif (url.pathname === '/api/ad/refresh' && req.method === 'GET') {\n  const userPlan = req.headers['x-user-plan'] || 'free';\n  const ads = this.adManager.getAdsForUser(userPlan as string, 3);\n  this.jsonResponse(res, 200, { \n    success: true, \n    ads: ads.map(ad => this.generateAdHTML([ad]))\n  });\n  return;\n}\n\n// Añadir método generateAdHTML()\nprivate generateAdHTML(ads: AdBanner[]): string {\n  if (ads.length === 0) return '';\n\n  const topAd = ads.find(a => a.placement === 'top');\n  const sidebarAd = ads.find(a => a.placement === 'sidebar');\n  const bottomAd = ads.find(a => a.placement === 'bottom');\n\n  let html = '';\n\n  if (topAd) {\n    html += `\n    <div class=\"ad-banner ad-top\" data-ad-id=\"${topAd.id}\" onclick=\"trackAdClick('${topAd.id}')\">\n      <div class=\"ad-content\">\n        <div class=\"ad-image\">\n          <img src=\"${topAd.imageUrl}\" alt=\"${topAd.title}\" loading=\"lazy\" onerror=\"this.style.display='none'\">\n        </div>\n        <div class=\"ad-text\">\n          <h3>${topAd.title}</h3>\n          <p>${topAd.description}</p>\n        </div>\n        <a href=\"${topAd.linkUrl}\" target=\"_blank\" rel=\"sponsored noopener\" class=\"ad-cta\">\n          ${topAd.ctaText} →\n        </a>\n        <button class=\"ad-close\" onclick=\"closeAd('${topAd.id}')\" aria-label=\"Cerrar anuncio\">✕</button>\n        <span class=\"ad-label\">Patrocinado</span>\n      </div>\n    </div>\n    `;\n  }\n\n  if (sidebarAd) {\n    html += `\n    <div class=\"ad-sidebar\" data-ad-id=\"${sidebarAd.id}\" onclick=\"trackAdClick('${sidebarAd.id}')\">\n      <div class=\"ad-sidebar-content\">\n        <div class=\"ad-sidebar-image\">\n          <img src=\"${sidebarAd.imageUrl}\" alt=\"${sidebarAd.title}\" loading=\"lazy\" onerror=\"this.style.display='none'\">\n        </div>\n        <div class=\"ad-sidebar-text\">\n          <h4>${sidebarAd.title}</h4>\n          <p>${sidebarAd.description}</p>\n        </div>\n        <a href=\"${sidebarAd.linkUrl}\" target=\"_blank\" rel=\"sponsored noopener\" class=\"ad-sidebar-cta\">\n          ${sidebarAd.ctaText}\n        </a>\n      </div>\n    </div>\n    `;\n  }\n\n  if (bottomAd) {\n    html += `\n    <div class=\"ad-footer\" data-ad-id=\"${bottomAd.id}\" onclick=\"trackAdClick('${bottomAd.id}')\">\n      <span class=\"ad-footer-label\">Patrocinado por</span>\n      <a href=\"${bottomAd.linkUrl}\" target=\"_blank\" rel=\"sponsored noopener\">\n        ${bottomAd.title}\n      </a>\n      <span class=\"ad-footer-desc\">${bottomAd.description}</span>\n    </div>\n    `;\n  }\n\n  return html;\n}\n\n// Añadir estilos al dashboard (en getDashboardHTML)\n// Añadir JavaScript para tracking (en getDashboardHTML)\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nMÓDULO 3: ADMINISTRACIÓN DE ANUNCIOS (src/ad-admin.ts)\n═══════════════════════════════════════════════════════════════════════════════\n\nCrear panel de administración para gestionar anuncios.\n\n```typescript\n// src/ad-admin.ts\nimport { AdvertisingManager } from './advertising';\nimport express from 'express';\n\nconst app = express();\napp.use(express.json());\n\nconst adManager = new AdvertisingManager();\n\n// ============================================================\n// ADMIN ENDPOINTS\n// ============================================================\n\n// Listar todos los anuncios\napp.get('/api/admin/ads', async (req, res) => {\n  const stats = adManager.getStats();\n  res.json({ success: true, data: stats });\n});\n\n// Crear nuevo anuncio\napp.post('/api/admin/ads', async (req, res) => {\n  try {\n    const ad = req.body;\n    await adManager.addAd(ad);\n    res.json({ success: true, message: 'Anuncio creado exitosamente' });\n  } catch (err: any) {\n    res.status(400).json({ error: err.message });\n  }\n});\n\n// Actualizar anuncio\napp.put('/api/admin/ads/:id', async (req, res) => {\n  try {\n    const { id } = req.params;\n    const updates = req.body;\n    await adManager.updateAd(id, updates);\n    res.json({ success: true });\n  } catch (err: any) {\n    res.status(400).json({ error: err.message });\n  }\n});\n\n// Eliminar anuncio\napp.delete('/api/admin/ads/:id', async (req, res) => {\n  try {\n    const { id } = req.params;\n    await adManager.removeAd(id);\n    res.json({ success: true });\n  } catch (err: any) {\n    res.status(400).json({ error: err.message });\n  }\n});\n\n// Activar/Desactivar anuncio\napp.patch('/api/admin/ads/:id/toggle', async (req, res) => {\n  try {\n    const { id } = req.params;\n    const { active } = req.body;\n    await adManager.toggleAd(id, active);\n    res.json({ success: true });\n  } catch (err: any) {\n    res.status(400).json({ error: err.message });\n  }\n});\n\n// Obtener configuración\napp.get('/api/admin/config', async (req, res) => {\n  const config = adManager.getConfig();\n  res.json({ success: true, data: config });\n});\n\n// Actualizar configuración\napp.patch('/api/admin/config', async (req, res) => {\n  try {\n    await adManager.updateConfig(req.body);\n    res.json({ success: true });\n  } catch (err: any) {\n    res.status(400).json({ error: err.message });\n  }\n});\n\napp.listen(3005, () => {\n  console.log(`\n╔══════════════════════════════════════════════════════════╗\n║  📊 Ad Admin Panel                                      ║\n║  🔗 http://localhost:3005                              ║\n║  📋 Endpoints: /api/admin/ads, /api/admin/config       ║\n╚══════════════════════════════════════════════════════════╝\n  `);\n});\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nMÓDULO 4: CONFIGURACIÓN Y ARCHIVOS DE PUBLICIDAD\n═══════════════════════════════════════════════════════════════════════════════\n\nCrear los archivos de configuración iniciales:\n\n.devmind/ads.json:\n```json\n[\n  {\n    \"id\": \"devmind-pro\",\n    \"type\": \"banner\",\n    \"title\": \"🧠 ¿Quieres más poder?\",\n    \"description\": \"Actualiza a DevMind Pro y obtén acceso ilimitado a todas las herramientas. Sin límites, con memoria infinita.\",\n    \"imageUrl\": \"/assets/pro-banner.png\",\n    \"linkUrl\": \"/pricing\",\n    \"ctaText\": \"Ver Planes\",\n    \"priority\": 10,\n    \"isActive\": true,\n    \"impressions\": 0,\n    \"clicks\": 0,\n    \"conversionRate\": 0,\n    \"startDate\": \"2026-06-18T00:00:00.000Z\",\n    \"endDate\": \"2027-06-18T00:00:00.000Z\",\n    \"targetAudience\": [\"free\"],\n    \"placement\": \"top\"\n  },\n  {\n    \"id\": \"sponsor-railway\",\n    \"type\": \"banner\",\n    \"title\": \"🚀 Despliega con Railway\",\n    \"description\": \"El hosting más fácil para tus proyectos. $5 de crédito al registrarte con código DEVMIND.\",\n    \"imageUrl\": \"https://railway.app/brand/logo-dark.png\",\n    \"linkUrl\": \"https://railway.app?ref=devmind\",\n    \"ctaText\": \"Probar Railway\",\n    \"priority\": 8,\n    \"isActive\": true,\n    \"impressions\": 0,\n    \"clicks\": 0,\n    \"conversionRate\": 0,\n    \"startDate\": \"2026-06-18T00:00:00.000Z\",\n    \"endDate\": \"2026-09-18T00:00:00.000Z\",\n    \"targetAudience\": [\"all\"],\n    \"placement\": \"top\"\n  },\n  {\n    \"id\": \"sponsor-educative\",\n    \"type\": \"sidebar\",\n    \"title\": \"📚 Aprende con Educative\",\n    \"description\": \"Cursos interactivos de programación. 20% off con código DEVMIND20.\",\n    \"imageUrl\": \"https://educative.io/assets/images/logo.png\",\n    \"linkUrl\": \"https://educative.io?ref=devmind\",\n    \"ctaText\": \"Ver Cursos\",\n    \"priority\": 7,\n    \"isActive\": true,\n    \"impressions\": 0,\n    \"clicks\": 0,\n    \"conversionRate\": 0,\n    \"startDate\": \"2026-06-18T00:00:00.000Z\",\n    \"endDate\": \"2026-08-18T00:00:00.000Z\",\n    \"targetAudience\": [\"all\"],\n    \"placement\": \"sidebar\"\n  }\n]\n```\n\n.devmind/ad-config.json:\n```json\n{\n  \"showAds\": true,\n  \"adRefreshInterval\": 30000,\n  \"maxAdsPerPage\": 3,\n  \"premiumAdvertisers\": []\n}\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nMÓDULO 5: SCRIPT DE PRUEBA DE PUBLICIDAD\n═══════════════════════════════════════════════════════════════════════════════\n\ntest/advertising.test.ts:\n```typescript\n// test/advertising.test.ts\nimport { AdvertisingManager } from '../src/advertising';\n\nasync function testAdvertising() {\n  console.log('🧪 Probando sistema de publicidad...\\n');\n\n  const adManager = new AdvertisingManager();\n\n  // 1. Probar carga de anuncios\n  console.log('📋 Anuncios cargados:');\n  const stats = adManager.getStats();\n  console.log(`  Total: ${stats.ads.length} anuncios`);\n\n  // 2. Probar segmentación\n  console.log('\\n🎯 Anuncios para usuario Free:');\n  const freeAds = adManager.getAdsForUser('free', 3);\n  freeAds.forEach(ad => console.log(`  - ${ad.title} (${ad.placement})`));\n\n  console.log('\\n🎯 Anuncios para usuario Pro:');\n  const proAds = adManager.getAdsForUser('pro', 3);\n  proAds.forEach(ad => console.log(`  - ${ad.title} (${ad.placement})`));\n\n  // 3. Probar tracking\n  console.log('\\n📊 Tracking de clicks:');\n  if (freeAds.length > 0) {\n    const testAd = freeAds[0];\n    adManager.trackClick(testAd.id);\n    const updatedStats = adManager.getStats();\n    const adStats = updatedStats.ads.find(a => a.id === testAd.id);\n    console.log(`  ${testAd.title}: ${adStats?.clicks || 0} clicks`);\n  }\n\n  // 4. Probar cierre de anuncios\n  console.log('\\n🚫 Cerrando anuncio...');\n  if (freeAds.length > 0) {\n    adManager.closeAd(freeAds[0].id);\n    const afterClose = adManager.getAdsForUser('free', 3);\n    console.log(`  Anuncios restantes: ${afterClose.length}`);\n  }\n\n  console.log('\\n✅ Pruebas completadas');\n}\n\ntestAdvertising().catch(console.error);\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nCOMANDOS PARA PROBAR\n═══════════════════════════════════════════════════════════════════════════════\n\n```bash\n# 1. Iniciar dashboard con publicidad\nnpx tsx src/index.ts --dashboard\n\n# 2. Probar endpoints de publicidad\ncurl http://localhost:3001/api/ad/refresh\ncurl -X POST http://localhost:3001/api/ad/click -H \"Content-Type: application/json\" -d '{\"adId\":\"devmind-pro\"}'\n\n# 3. Probar admin panel\nnpx tsx src/ad-admin.ts\n\n# 4. Probar tests\nnpx tsx test/advertising.test.ts\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nINTEGRACIÓN FINAL\n═══════════════════════════════════════════════════════════════════════════════\n\nModificar src/index.ts para incluir el sistema de publicidad:\n\n```typescript\n// src/index.ts - AÑADIR\nimport { AdvertisingManager } from './advertising';\n\n// En la inicialización\nconst adManager = new AdvertisingManager();\n\n// Comando para estadísticas de anuncios\nif (command === '--ad-stats') {\n  const stats = adManager.getStats();\n  console.log('\\n📊 Estadísticas de Anuncios:\\n');\n  console.log(`  Impresiones totales: ${stats.totalImpressions}`);\n  console.log(`  Clicks totales: ${stats.totalClicks}`);\n  console.log(`  CTR: ${stats.overallCTR}\\n`);\n  console.log('  Detalles:');\n  stats.ads.forEach(ad => {\n    console.log(`    ${ad.title}: ${ad.impressions} impresiones, ${ad.clicks} clicks (${ad.ctr})`);\n  });\n  return;\n}\n\n// Comando para gestionar anuncios\nif (command === '--ad-list') {\n  const stats = adManager.getStats();\n  console.log('\\n📋 Anuncios activos:\\n');\n  stats.ads.filter(a => a.isActive).forEach(ad => {\n    console.log(`  ✅ ${ad.title} (${ad.id}) - ${ad.placement}`);\n    console.log(`     ${ad.description}`);\n  });\n  return;\n}\n```\n\n═══════════════════════════════════════════════════════════════════════════════\nENTREGABLE FINAL\n═══════════════════════════════════════════════════════════════════════════════\n\nGenerame:\n1. src/advertising.ts (sistema completo)\n2. src/dashboard.ts (modificado con publicidad)\n3. src/ad-admin.ts (panel de administración)\n4. test/advertising.test.ts (pruebas)\n5. .devmind/ads.json (anuncios por defecto)\n6. .devmind/ad-config.json (configuración)\n7. Modificaciones en src/index.ts\n\nEl sistema debe ser funcional al copiar y pegar.\n```\n\n---\n\n## 🚀 COMANDOS FINALES\n\n```bash\n# 1. Probar el sistema completo\nnpx tsx src/index.ts --dashboard\n\n# 2. Ver estadísticas de anuncios\nnpx tsx src/index.ts --ad-stats\n\n# 3. Listar anuncios activos\nnpx tsx src/index.ts --ad-list\n\n# 4. Probar admin panel\nnpx tsx src/ad-admin.ts\n\n# 5. Ejecutar pruebas\nnpx tsx test/advertising.test.ts\n```\n\n---\n\n**Este prompt está listo para copiar y pegar en GLM 4.7. El programador generará TODO el sistema de publicidad integrado con el dashboard.** 🚀 "
+  1269→                - button "Show full message" [ref=e115]
+  1270→              - generic "Copy" [ref=e40] focusable [tabindex]
+  1271→          - generic
+  1272→            - image "profile"
+  1273→            - generic "GLM-4.7" [ref=e9] focusable [tabindex]
+  1274→              - StaticText "GLM-4.7"
+  1275→            - button "Thought Process" [ref=e41]
+  1276→              - image
+  1277→              - StaticText "Thought Process"
+  1278→              - image
+  1279→            - paragraph
+  1280→              - StaticText "Aquí tienes la implementación completa de los archivos necesarios para el sistema de publicidad."
+  1281→            - paragraph
+  1282→              - StaticText "He mantenido la estructura de archivos solicitada, integrando lógica robusta, segmentación de planes (Free vs Pro), y persistencia de datos."
+  1283→            - separator
+  1284→            - heading "1. Archivo: src/advertising.ts" [level=3, ref=e42]
+  1285→              - StaticText "1. Archivo: "
+  1286→              - code [ref=e69] clickable [cursor:pointer]
+  1287→            - paragraph
+  1288→              - StaticText "Este módulo gestiona qué anuncios mostrar, a quién, y cuántos clics han recibido."
+  1289→            - generic
+  1290→              - StaticText "typescript"
+  1291→              - generic "Copy" [ref=e116] focusable [tabindex]
+  1292→                - button [ref=e198]
+  1293→              - generic
+  1294→                - textbox [ref=e199]: // src/advertising.ts
+  1295→export interface AdBanner {
+  1296→  id: string;
+  1297→  type: 'banner' | 'sidebar' | 'footer' | 'modal' | 'inline';
+  1298→  title: string;
+  1299→  description: string;
+
+[showing lines 800-1299 of 2708; use offset=1300 with limit to continue reading]

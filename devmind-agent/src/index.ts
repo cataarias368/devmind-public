@@ -1,5 +1,5 @@
 // ============================================================
-// src/index.ts - Punto de Entrada Principal de DevMind Agent
+// src/index.ts - Punto de Entrada Principal de DevMind Agent v2.0
 // ============================================================
 
 import { resolve } from 'path';
@@ -16,6 +16,9 @@ import { MultiPlatformBot } from './chat-bots.js';
 import { MultiAgentOrchestrator } from './multi-agent.js';
 import { TestGenerator } from './test-generator.js';
 import { RestAPIServer } from './server.js';
+import { TaskManager } from './tasks/index.js';
+import { AdvertisingManager } from './advertising.js';
+import { Monitor } from './monitor.js';
 import type { AgentCore } from './types.js';
 
 async function main(): Promise<void> {
@@ -38,6 +41,21 @@ async function main(): Promise<void> {
   // Inicializar subsistemas de estado
   await checkpointManager.init();
   await memoryStore.init();
+
+  // --- Inicializar TaskManager (15 módulos de rendimiento) ---
+  const taskManager = new TaskManager(workspaceRoot);
+
+  // --- Inicializar Advertising Manager ---
+  const adManager = new AdvertisingManager({
+    showAds: true,
+    maxAdsPerPage: 3,
+    workspaceRoot,
+  });
+  await adManager.init();
+
+  // --- Inicializar Monitor del Sistema ---
+  const monitor = new Monitor(workspaceRoot);
+  await monitor.init();
 
   // Construir el núcleo del agente
   const agentCore: AgentCore = {
@@ -62,8 +80,111 @@ async function main(): Promise<void> {
 
   const args = process.argv.slice(2);
 
+  // ======== NUEVOS COMANDOS DE RENDIMIENTO ========
+
+  // HEALTH CHECK
+  if (args.includes('--health')) {
+    await taskManager.startAllTasks();
+    const health = await taskManager.healthCheck.check();
+    console.log(`\n🏥 Health Check: ${health.status.toUpperCase()}`);
+    console.log(`Timestamp: ${new Date(health.timestamp).toISOString()}`);
+    console.log('\nChecks:');
+    for (const [check, passed] of Object.entries(health.checks)) {
+      console.log(`  ${passed ? '✅' : '❌'} ${check}`);
+    }
+    if (health.issues.length > 0) {
+      console.log('\n⚠️ Issues:');
+      for (const issue of health.issues) {
+        console.log(`  → ${issue}`);
+      }
+    }
+    await taskManager.stopAllTasks();
+    return;
+  }
+
+  // MÉTRICAS DE RENDIMIENTO
+  if (args.includes('--metrics')) {
+    await taskManager.evaluator.load();
+    const evaluation = await taskManager.evaluator.evaluate();
+    const performance = await taskManager.evaluator.getPerformance();
+    console.log(`\n📊 Métricas de Rendimiento: ${performance}`);
+    console.log(`  Tasa de éxito: ${(evaluation.details.successRate * 100).toFixed(1)}%`);
+    console.log(`  Pasos promedio: ${evaluation.details.avgSteps.toFixed(1)}`);
+    console.log(`  Tokens promedio: ${evaluation.details.avgTokens.toFixed(0)}`);
+    console.log(`  Tiempo promedio: ${(evaluation.details.avgTime / 1000).toFixed(1)}s`);
+    return;
+  }
+
+  // SUGERENCIAS DE MEJORA
+  if (args.includes('--suggest')) {
+    await taskManager.evaluator.load();
+    const suggestions = await taskManager.suggestions.suggest(taskManager.evaluator);
+    console.log('\n💡 Sugerencias de Mejora:');
+    if (suggestions.length === 0) {
+      console.log('  No hay sugerencias. ¡Todo funciona bien!');
+    } else {
+      for (const s of suggestions) {
+        console.log(`  → ${s}`);
+      }
+    }
+    return;
+  }
+
+  // LIMPIAR CACHÉ SEMÁNTICO
+  if (args.includes('--clear-cache')) {
+    const removed = taskManager.cache.clearExpired();
+    taskManager.cache.clear();
+    console.log(`🗑️ Caché semántico limpiado (${removed} entradas expiradas eliminadas, caché reseteado)`);
+    return;
+  }
+
+  // ESTADO COMPLETO DEL SISTEMA
+  if (args.includes('--status')) {
+    await taskManager.startAllTasks();
+    const status = await taskManager.getStatus() as Record<string, unknown>;
+    const episodes = status.episodes as { total: number; successful: number; failed: number };
+    const alerts = status.alerts as { total: number; warning: number; critical: number };
+    console.log('\n📊 Estado Completo del Sistema:');
+    console.log(`  Salud: ${status.health}`);
+    console.log(`  Rendimiento: ${status.performance}`);
+    console.log(`  Caché: ${String(status.cacheSize)} entradas`);
+    console.log(`  Lotes pendientes: ${String(status.pendingBatches)}`);
+    console.log(`  Episodios: ${String(episodes.total)} (${String(episodes.successful)} exitosos, ${String(episodes.failed)} fallidos)`);
+    console.log(`  Memoria corto plazo: ${String(status.shortTermMemories)} entradas recientes`);
+    console.log(`  Alertas: ${String(alerts.total)} (⚠️ ${String(alerts.warning)} 🚨 ${String(alerts.critical)})`);
+    console.log(`  TaskManager: ${status.isRunning ? '🟢 Activo' : '🔴 Detenido'}`);
+
+    // Monitor stats
+    console.log('\n📈 Monitor del Sistema:');
+    console.log(monitor.getSummary());
+
+    await taskManager.stopAllTasks();
+    return;
+  }
+
+  // ESTADÍSTICAS DE PUBLICIDAD
+  if (args.includes('--ad-stats')) {
+    const stats = adManager.getStats();
+    console.log('\n📊 Estadísticas de Publicidad:\n');
+    console.log(`  Total Impresiones: ${stats.totalImpressions}`);
+    console.log(`  Total Clicks: ${stats.totalClicks}`);
+    console.log(`  CTR Global: ${(stats.overallCTR * 100).toFixed(2)}%\n`);
+    console.log('--- Anuncios Activos ---');
+    for (const ad of stats.ads) {
+      if (ad.isActive) {
+        const imp = stats.impressions[ad.id] || 0;
+        const clicks = stats.clicks[ad.id] || 0;
+        console.log(`  ✅ ${ad.title} (${ad.placement}): ${imp} impresiones, ${clicks} clicks (${(ad.ctr * 100).toFixed(2)}% CTR)`);
+      }
+    }
+    return;
+  }
+
+  // ======== MODOS ORIGINALES ========
+
   // 1. MODO DASHBOARD WEB
   if (args.includes('--dashboard')) {
+    await taskManager.startAllTasks();
     const dashboard = new DashboardServer({
       port: config.DASHBOARD_PORT,
       agentCore,
@@ -72,11 +193,17 @@ async function main(): Promise<void> {
     await dashboard.start();
     console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
     console.log('Presioná Ctrl+C para detener.');
+
+    process.on('SIGINT', async () => {
+      await taskManager.stopAllTasks();
+      process.exit(0);
+    });
     return;
   }
 
   // 2. MODO API REST
   if (args.includes('--server')) {
+    await taskManager.startAllTasks();
     const server = new RestAPIServer({
       port: config.API_PORT,
       agentCore,
@@ -84,6 +211,11 @@ async function main(): Promise<void> {
     });
     await server.start();
     console.log('Presioná Ctrl+C para detener.');
+
+    process.on('SIGINT', async () => {
+      await taskManager.stopAllTasks();
+      process.exit(0);
+    });
     return;
   }
 
@@ -93,6 +225,8 @@ async function main(): Promise<void> {
       console.error('❌ No hay bots configurados. Configurá al menos uno: SLACK_TOKEN, DISCORD_TOKEN o TELEGRAM_TOKEN en .env');
       process.exit(1);
     }
+
+    await taskManager.startAllTasks();
 
     const bot = new MultiPlatformBot({
       slack: config.SLACK_TOKEN ? {
@@ -111,10 +245,10 @@ async function main(): Promise<void> {
     await bot.start();
     console.log('🤖 Bots iniciados. Presioná Ctrl+C para detener.');
 
-    // Mantener proceso vivo
     process.on('SIGINT', async () => {
       console.log('\n🛑 Deteniendo bots...');
       await bot.stop();
+      await taskManager.stopAllTasks();
       process.exit(0);
     });
     return;
@@ -127,6 +261,8 @@ async function main(): Promise<void> {
 
     console.log(`🤖 Modo Multi-Agente: "${task}"\n`);
 
+    await taskManager.startAllTasks();
+
     const orchestrator = new MultiAgentOrchestrator({
       llmProvider,
       imageProvider,
@@ -135,7 +271,6 @@ async function main(): Promise<void> {
       agents: MultiAgentOrchestrator.defaultAgents(),
     });
 
-    // Suscribir a eventos
     orchestrator.on('task-start', (data) => console.log(`🏃 [${data.agent}] ${data.description}`));
     orchestrator.on('task-done', (data) => console.log(`✅ ${data.taskId}: ${String(data.result).slice(0, 60)}...`));
     orchestrator.on('task-failed', (data) => console.log(`❌ ${data.taskId}: ${data.error}`));
@@ -143,6 +278,8 @@ async function main(): Promise<void> {
     const result = await orchestrator.execute(task);
     console.log('\n🏁 RESUMEN MULTI-AGENTE:');
     console.log(result.summary);
+
+    await taskManager.stopAllTasks();
     return;
   }
 
@@ -169,7 +306,6 @@ async function main(): Promise<void> {
     const suites = await testGen.generateForDirectory(targetDir, testType);
     console.log(`\n📊 ${suites.length} suites de tests generadas`);
 
-    // Ejecutar tests si se generaron
     if (suites.length > 0 && args.includes('--run')) {
       console.log('\n🚀 Ejecutando tests...');
       for (const suite of suites) {
@@ -239,16 +375,29 @@ async function main(): Promise<void> {
   devmind --docs [directorio]  Genera documentación automática
   devmind --github [acción]    Interactúa con GitHub (issues, prs, summary)
 
+  🔧 Rendimiento:
+  devmind --health             Ejecutar Health Check
+  devmind --metrics            Mostrar métricas de rendimiento
+  devmind --suggest            Obtener sugerencias de mejora
+  devmind --clear-cache        Limpiar caché semántico
+  devmind --status             Estado completo del sistema
+
+  📢 Publicidad:
+  devmind --ad-stats           Estadísticas de publicidad
+
 Ejemplos:
   devmind "Crear una API REST con Express"
   devmind --multi-agent "Construir un sistema de autenticación"
   devmind --test ./src --run
-  devmind --docs ./src --html
+  devmind --health
+  devmind --status
 `);
     return;
   }
 
-  // Ejecutar tarea con el agente
+  // Ejecutar tarea con el agente (con TaskManager activo)
+  await taskManager.startAllTasks();
+
   console.log(`🤖 Ejecutando tarea: ${userTask}\n`);
 
   const result = await agentLoop(userTask, {
@@ -260,6 +409,10 @@ Ejemplos:
     onStep: (step, msg) => console.log(`[Paso ${step}] ${msg}`),
   });
 
+  // Registrar métricas
+  monitor.recordTask(result.success);
+  await taskManager.evaluator.record(userTask, { success: result.success, summary: result.summary, steps: result.stepsCompleted });
+
   console.log(`\n${result.success ? '✅' : '❌'} Resultado:`);
   console.log(result.summary);
 
@@ -269,6 +422,8 @@ Ejemplos:
       console.log(`  → ${file}`);
     }
   }
+
+  await taskManager.stopAllTasks();
 }
 
 // --- Manejo de señales ---

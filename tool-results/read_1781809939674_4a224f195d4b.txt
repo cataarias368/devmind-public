@@ -1,0 +1,402 @@
+   599→   599→
+   600→   600→    // Console output
+   601→   601→    if (level === 'critical') console.error(`[CRITICAL] ${message}`);
+   602→   602→    if (level === 'warning') console.warn(`[WARNING] ${message}`);
+   603→   603→    if (level === 'info') console.log(`[INFO] ${message}`);
+   604→   604→
+   605→   605→    // Persistir
+   606→   606→    await this.save();
+   607→   607→
+   608→   608→    // Slack Webhook
+   609→   609→    if (level === 'critical' && process.env.SLACK_WEBHOOK_URL) {
+   610→   610→      await fetch(process.env.SLACK_WEBHOOK_URL, {
+   611→   611→        method: 'POST',
+   612→   612→        headers: { 'Content-Type': 'application/json' },
+   613→   613→        body: JSON.stringify({ text: `🚨 DevMind Alert (${level.toUpperCase()}): ${message}` })
+   614→   614→      }).catch(() => {});
+   615→   615→    }
+   616→   616→  }
+   617→   617→
+   618→   618→  private async save(): Promise<void> {
+   619→   619→    const dir = path.join(process.cwd(), '.devmind');
+   620→   620→    await fs.mkdir(dir, { recursive: true });
+   621→   621→    await fs.writeFile(path.join(dir, 'alerts.log'), JSON.stringify(this.alerts, null, 2));
+   622→   622→  }
+   623→   623→}
+   624→   624→8. TaskManager (Orquestador)
+   625→   625→Archivo: src/tasks/index.ts
+   626→   626→
+   627→   627→mecanografiado
+   628→   628→
+   629→   629→import { ContextCompressor } from './context-compression';
+   630→   630→
+   631→   631→export class TaskManager {
+   632→   632→  compressor = new ContextCompressor();
+   633→   633→  window = new SlidingWindow();
+   634→   634→  prioritizer = new ToolPrioritizer();
+   635→   635→  cache = new SemanticCache();
+   636→   636→  shortTermMemory = new ShortTermMemory();
+   637→   637→  episodicMemory = new EpisodicMemory();
+   638→   638→  anticipator = new StepAnticipator();
+   639→   639→  planning = new DynamicPlanning();
+   640→   640→  batcher = new BatchProcessor();
+   641→   641→  evaluator = new SelfEvaluator();
+   642→   642→  improver = new ImprovementSuggestions(evaluator);
+   643→   643→  executor = new IndependentExecution();
+   644→   644→  pipeline = new ParallelPipeline();
+   645→   645→  health = new HealthCheck();
+   646→   646→  alerts = new Alerts();
+   647→   647→
+   648→   648→  async startAllTasks(): Promise<void> {
+   649→   649→    console.log('🚀 Iniciando tareas de rendimiento...');
+   650→   650→    // Iniciar background checks si se desea
+   651→   651→    this.startBackgroundHealthCheck();
+   652→   652→  }
+   653→   653→
+   654→   654→  // Getters para las herramientas
+   655→   655→  getCompressor() { return this.compressor; }
+   656→   656→  getPrioritizer() { return this.prioritizer; }
+   657→   657→  getCache() { return this.cache; }
+   658→   658→  getShortTermMemory() { return this.shortTermMemory; }
+   659→   659→  getEpisodicMemory() { return this.episodicMemory; }
+   660→   660→  getAnticipator() { return this.anticator; }
+   661→   661→  getPlanning() { return this.planning; }
+   662→   662→  getBatcher() { return this.batcher; }
+   663→   663→  getEvaluator() { return this.evaluator; }
+   664→   664→  getImprover() { return this.improver; }
+   665→   665→  getExecutor() { return this.executor; }
+   666→   666→  getPipeline() { return this.pipeline; }
+   667→   667→  getHealth() { return this.health; }
+   668→   668→  getAlerts() { return this.alerts; }
+   669→   669→
+   670→   670→  private startBackgroundHealthCheck(): void {
+   671→   671→    setInterval(async () => {
+   672→   672→      const { status, issues } = this.health.check();
+   673→   673→      if (status !== 'healthy') {
+   674→   674→        await this.alerts.send('warning', issues.join(', '));
+   675→   675→      }
+   676→   676→    }, 60000); // Cada minuto
+   677→   677→  }
+   678→   678→}
+   679→   679→9. Integración ensrc/agent.ts
+   680→   680→mecanografiado
+   681→   681→
+   682→   682→// src/agent.ts
+   683→   683→    
+   684→   684→    // --- TAREA 1.1: COMPRESIÓN DE CONTEXTO ---
+   685→   685→    const compressedContext = await taskManager.getCompressor().compressContext(messages, llmProvider);
+   686→   686→    
+   687→   687→    // --- TAREA 1.2: VENTANA DESLIZANTE ---
+   688→   688→    const activeMessages = compressedContext; // (Simplificado: usar el array comprimido)
+   689→   689→
+   690→   690→    // --- TAREA 2.1: CACHE SEMÁNTICO ---
+   691→   691→    const cacheKey = JSON.stringify({ role: 'user', content: activeMessages[activeMessages.length - 1] });
+   692→   692→    const cachedResult = await taskManager.getCache().get(cacheKey);
+   693→   693→    if (cachedResult) {
+   694→   694→        return { success: true, summary: `Resultado cacheado: ${cachedResult}`, steps };
+   695→   695→    }
+   696→   696→
+   697→   697→    // LLM Call
+   698→   698→    const response = await llmProvider.call(activeMessages, TOOL_DEFINITIONS);
+   699→   699→    const choice = response.choices[0]?.message || response;
+   700→   700→
+   701→   701→    // --- TAREA 2.2: MEMORIA A CORTO PLAZO ---
+   702→   702→    if (choice.content) {
+   703→   703→        taskManager.getShortTermMemory().add("LLM Call", "Generación de respuesta", 2);
+   704→   704→        messages.push(choice);
+   705→   705→    }
+   706→   706→
+   707→   707→    // Tool Calls
+   708→   708→    if (choice.tool_calls && choice.tool_calls.length > 0) {
+   709→   709→      messages.push({ role: 'assistant', content: choice.content || null, tool_calls: choice.tool_calls });
+   710→   710→
+   711→   711→      // --- TAREA 1.3: PRIORIZACIÓN DE HERRAMIENTAS ---
+   712→   712→      const prioritizedTools = taskManager.getPrioritizer().prioritizeTools(TOOL_DEFINITIONS, userObjective);
+   713→   713→
+   714→   714→      for (const tc of choice.tool_calls) {
+   715→   715→        // Ejecutar herramienta
+   716→   716→        let toolResult = await toolExecutor(tc.function.name, JSON.parse(tc.function.arguments));
+   717→   717→        
+   718→   718→        // --- TAREA 4.1: AUTORREGISTRO ---
+   719→   719→        await taskManager.getEvaluator().record(userObjective, { success: true, steps: 0 });
+   720→   720→        
+   721→   721→        messages.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
+   722→   722→      }
+   723→   723→    }
+   724→   724→    
+   725→   725→    // --- TAREA 2.3: MEMORIA EPISÓDICA ---
+   726→   726→    if (steps === maxSteps || choice.content?.toLowerCase().includes('complet')) {
+   727→   727→      taskManager.getEpisodicMemory().add(userObjective, "Plan inicial", "Tarea finalizada", true);
+   728→   728→      
+   729→   729→      const suggestions = await taskManager.getImprover().suggest(taskManager.getEvaluator());
+   730→   730→      if (suggestions.length > 0) {
+   731→   731→        console.log("💡 Sugerencias:", suggestions);
+   732→   732→      }
+   733→   733→    }
+   734→   734→
+   735→   735→    return { success: true, summary: choice.content || "Tarea completada", steps };
+   736→   736→  }
+   737→   737→}
+   738→   738→10. Integración ensrc/index.ts
+   739→   739→mecanografiado
+   740→   740→
+   741→   741→// src/index.ts
+   742→   742→// ... imports ...
+   743→   743→import { TaskManager } from './tasks';
+   744→   744→
+   745→   745→async function main() {
+   746→   746→  const apiKey = process.env.GLM_API_KEY;
+   747→   747→  // ... config ...
+   748→   748→
+   749→   749→  // --- COMANDOS NUEVOS ---
+   750→   750→  if (process.argv.includes('--health')) {
+   751→   751→    const tm = new TaskManager();
+   752→   752→    const health = tm.getHealth().check();
+   753→   753→    console.log(health);
+   754→   754→    return;
+   755→   755→  }
+   756→   756→
+   757→   757→  if (process.argv.includes('--metrics')) {
+   758→   758→    const tm = new TaskManager();
+   759→   759→    const stats = await tm.getEvaluator().evaluate();
+   760→   760→    console.log(stats);
+   761→   761→    return;
+   762→   762→  }
+   763→   763→
+   764→   764→  // ... resto del código ...
+   765→   765→}
+   766→   766→Resumen de Archivos Generados
+   767→   767→src/tasks/types.ts : Tipos compartidos.
+   768→   768→src/tasks/context-compression.ts : Compresión inteligente del historial.
+   769→   769→src/tasks/sliding-window.ts : Ventana dinámica de mensajes.
+   770→   770→src/tasks/tool-prioritization.ts : Selección óptima de herramientas.
+   771→   771→src/tasks/semantic-cache.ts : Caché semántico para respuestas.
+   772→   772→src/tasks/short-term-memory.ts : Memoria a corto plazo.
+   773→   773→src/tasks/episodic-memory.ts: Memoria a largo plazo (episodios).
+   774→   774→**src/tasks/step-anticipation.ts`: predicción de pasos.
+   775→   775→src/tasks/dynamic-planning.ts : Replanificación dinámica.
+   776→   776→src/tasks/batch-processing.ts : Procesamiento por lotes.
+   777→   777→src/tasks/self-evaluación.ts : Evaluación de métricas.
+   778→   778→src/tasks/improvement-suggestions.ts : Sugerencias automáticas.
+   779→   779→src/tasks/independent-execution.ts : Ejecución paralela aislada.
+   780→   780→src/tasks/parallel-pipeline.ts : Pipeline paralelo.
+   781→   781→src/tasks/health-check.ts : Verificación de salud del sistema.
+   782→   782→src/tasks/alerts.ts : Sistema de alertas.
+   783→   783→src/tasks/index.ts : Orquestador de tareas.
+   784→   784→Copia y pega los archivos en tu carpeta y actualiza y según las secciones anteriores.src/tasks/src/agent.tssrc/index.ts
+   785→   785→
+   786→   786→# 📋 PROMPT COMPLETO - PUBLICIDAD EN DASHBOARD + SISTEMA COMPLETO Perfecto. Te entrego el **rápido único y completo** que incluye TODOS los módulos de publicidad integrados en el sistema DevMind v2.0. --- ``` Vas a implementar el sistema completo de publicidad no invasiva en el tablero de DevMind Agent, integrado con todo el sistema existente. ═══════════════════ ════════════════════ ════════════════════ ════════════════════ OBJETIVO ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Implementar un sistema de publicidad que: 1. Sea NO INVASIVO (no interrumpe el flujo de trabajo) 2. Genere ingresos pasivos para el proyecto 3. Sea configurable y trackeable 4. Permita a los usuarios Pro ocultar anuncios 5. Tenga un panel de administración ═══════════════════ ════════════════════ ════════════════════ ════════════════════ MÓDULO 1: SISTEMA DE PUBLICIDAD (src/advertising.ts) ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Crear el sistema completo de gestión de publicidad. Requisitos: - Gestión de anuncios (CRUD completo) - Segmentación por tipo de usuario (free/pro/enterprise) - Tracking de impresiones y clics - Sistema de prioridades y rotación - Caché de anuncios en .devmind/ads.json - Estadísticas de rendimiento Código completo de src/advertising.ts: ```typescript // src/advertising.ts import * as fs from 'fs/promises'; importar * como ruta desde 'ruta'; interfaz de exportación AdBanner { id: cadena; tipo: 'banner' | 'barra lateral' | 'pie de página' | 'modales' | 'en línea'; título: cadena; descripción: cadena; URL de la imagen: cadena; linkUrl: cadena; ctaText: cadena; prioridad: número; isActive: booleano; impresiones: número; clics: número; tasa de conversión: número; fecha de inicio: cadena; fecha final: cadena; targetAudience: cadena[]; ubicación: 'arriba' | 'abajo' | 'barra lateral' | 'inline'; } export interface AdConfig { showAds: boolean; adRefreshInterval: number; maxAdsPerPage: number; premiumAdvertisers: string[]; } export class AdvertisingManager { private ads: AdBanner[] = []; private config: AdConfig; private impressions: Map<string, number> = new Map(); private clicks: Map<string, number> = new Map(); private closedAds: Set<string> = new Set(); constructor(config: Partial<AdConfig> = {}) { this.config = { showAds: true, adRefreshInterval: 30000, maxAdsPerPage: 3, premiumAdvertisers: [], ...config }; this.loadAds(); this.loadClosedAds(); } private getDefaultAds(): AdBanner[] { return [ { id: 'devmind-pro', type: 'banner', title: '🧠 ¿Quieres más poder?', descripción: 'Actualiza a DevMind Pro y obtén acceso ilimitado a todas las herramientas. Sin límites, con memoria infinita.', imageUrl: '/assets/pro-banner.png',linkUrl: '/pricing', ctaText: 'Ver Planes', priority: 10, isActive: true, impressions: 0, clicks: 0, conversionRate: 0, startDate: new Date().toISOString(), endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), targetAudience: ['free'], placement: 'top' }, { id: 'sponsor-railway', type: 'banner', title: '🚀 Despliega con Railway', description: 'El hosting más fácil para tus proyectos. $5 de crédito al registrarte con código DEVMIND.', imageUrl: 'https://railway.app/brand/logo-dark.png', linkUrl: 'https://railway.app?ref=devmind', ctaText: 'Probar Railway', prioridad: 8, isActive: true, impresiones: 0, clics: 0, conversionRate: 0, startDate: new Date().toISOString(), endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), targetAudience: ['all'], ubicación: 'top' }, { id: 'sponsor-educative', type: 'sidebar', title: '📚 Aprende con Educative', descripción: 'Cursos interactivos de programación. 20% de descuento con el código DEVMIND20.', imageUrl: 'https://educative.io/assets/images/logo.png', linkUrl: 'https://educative.io?ref=devmind', ctaText: 'Ver Cursos', priority: 7, isActive: true, impressions: 0, clicks: 0, conversionRate: 0, startDate: new Date().toISOString(), endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), targetAudience: ['all'], placement: 'sidebar' }, { id: 'sponsor-vercel', type: 'footer', title: 'Vercel', description: 'El mejor hosting para aplicaciones modernas. Despliega con un click.', imageUrl: 'https://vercel.com/favicon.ico', linkUrl: 'https://vercel.com?ref=devmind', ctaText: 'Desplegar', priority: 5, isActive: true, impressions: 0, clicks: 0, conversionRate: 0, startDate: new Date().toISOString(), endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), targetAudience: ['all'], placement: 'bottom' } ]; } private async loadAds(): Promise<void> { try { const adPath = path.join(process.cwd(), '.devmind', 'ads.json'); const data = await fs.readFile(adPath, 'utf-8'); this.ads = JSON.parse(data); } catch { this.ads = this.getDefaultAds(); await this.saveAds(); } } private async loadClosedAds():Promise<void> { try { const closedPath = path.join(process.cwd(), '.devmind', 'closed-ads.json'); const data = await fs.readFile(closedPath, 'utf-8'); const closed = JSON.parse(data); this.closedAds = new Set(closed); } catch { this.closedAds = new Set(); } } async saveAds(): Promise<void> { const adPath = path.join(process.cwd(), '.devmind', 'ads.json'); const dir = path.dirname(adPath); await fs.mkdir(dir, { recursive: true }); await fs.writeFile(adPath, JSON.stringify(this.ads, null, 2), 'utf-8'); } async saveClosedAds(): Promise<void> { const closedPath = path.join(process.cwd(), '.devmind', 'closed-ads.json'); await fs.writeFile(closedPath, JSON.stringify(Array.from(this.closedAds), null, 2), 'utf-8'); } getAdsForUser(userPlan: string = 'free', limit: number = 3): AdBanner[] { if (!this.config.showAds) return []; const now = new Date(); const available = this.ads.filter(ad => ad.isActive && new Date(ad.startDate) <= now && new Date(ad.endDate) >= now && (ad.targetAudience.includes('all') || ad.targetAudience.includes(userPlan)) && !this.closedAds.has(ad.id) ); // Si es usuario Pro, mostrar menos anuncios const maxAds = userPlan === 'pro' ? 1 : userPlan === 'enterprise' ? 0 : limit; available.sort((a, b) => b.priority - a.priority); const result: AdBanner[] = []; const placements = ['top', 'sidebar', 'bottom', 'inline']; for (const placement of placements) { const ad = available.find(a => a.placement === placement && !result.includes(a)); if (ad) result.push(ad); if (result.length >= maxAds) break; } // Registrar impresiones for (const ad of result) { this.impressions.set(ad.id, (this.impressions.get(ad.id) || 0) + 1); ad.impressions++; } return result; } trackClick(adId: string): void { const ad = this.ads.find(a => a.id === adId); if (ad) { this.clicks.set(adId, (this.clicks.get(adId) || 0) + 1); ad.clicks++; const impressions = this.impressions.get(adId) || 0; ad.conversionRate = impressions > 0 ? (ad.clicks / impressions) * 100 : 0; this.saveAds(); } } closeAd(adId: string): void { this.closedAds.add(adId); this.saveClosedAds(); } getStats(): any { const totalImpressions = Array.from(this.impressions.values()).reduce((a, b) => a + b, 0); const totalClicks = Array.from(this.clicks.values()).reduce((a, b) => a + b, 0); const overallCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0; return { totalImpressions, totalClicks, overallCTR: overallCTR.toFixed(2) + '%', ads: this.ads.map(ad => ({ id: ad.id, title: ad.title, impressions: ad.impressions, clicks: ad.clicks, ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) + '%' : '0%', conversionRate: ad.conversionRate.toFixed(2) + '%', isActive: ad.isActive })) }; } async addAd(ad: Omit<AdBanner, 'impressions' | 'clicks' | 'conversionRate'>): Promise<void> { const newAd: AdBanner = { ...ad, impressions: 0, clicks: 0, conversionRate: 0 }; this.ads.push(newAd); await this.saveAds(); } async removeAd(adId: string): Promise<void> { this.ads = this.ads.filter(a => a.id !== adId); await this.saveAds(); } async updateAd(adId: string, updates: Partial<AdBanner>): Promise<void> { const ad = this.ads.find(a => a.id === adId); if (ad) { Object.assign(ad, updates); await this.saveAds(); } } async toggleAd(adId: string, active: boolean): Promise<void> { const ad = this.ads.find(a => a.id === adId); if (ad) { ad.isActive = active; await this.saveAds(); } } getConfig(): AdConfig { return this.config; } async updateConfig(config: Partial<AdConfig>): Promise<void> { Object.assign(this.config, config); const configPath = path.join(process.cwd(), '.devmind', 'ad-config.json'); await fs.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf-8'); } } ``` ══════════════════════════════════════════════════════════════════════════════ MÓDULO 2: INTEGRACIÓN EN EL DASHBOARD (src/dashboard.ts - MODIFICADO) ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Integrar el sistema de publicidad en el tablero existente. Añadir al DashboardServer: 1. Importar AdvertisingManager 2. Inicializar en el constructor 3. Inyectar anuncios en el HTML 4. Endpoints para tracking Código a añadir en src/dashboard.ts: ```typescript // src/dashboard.ts - AÑADIR AL INICIO import { AdvertisingManager, AdBanner } from './advertising'; // En el constructor constructor(config: DashboardConfig) { // ... código existente ... this.adManager = new AdvertisingManager({ showAds: true, maxAdsPerPage: 3, adRefreshInterval: 30000 }); } // Añadir en handleAPI() if (url.pathname === '/api/ad/click' && req.method === 'POST') { const body = await this.parseBody(req); this.adManager.trackClick(body.adId); this.jsonResponse(res, 200, { success: true }); return; } if (url.pathname === '/api/ad/close' && req.method === 'POST') { const body = await this.parseBody(req); this.adManager.closeAd(body.adId); this.jsonResponse(res, 200, { success: true }); return; } if (url.pathname === '/api/ad/refresh' && req.método === 'GET') { const userPlan = req.headers['x-user-plan'] || 'free'; const ads = this.adManager.getAdsForUser(userPlan as string, 3); this.jsonResponse(res, 200, { success: true, ads: ads.map(ad => this.generateAdHTML([ad])) }); return; } // Agregar método generateAdHTML() private generateAdHTML(ads: AdBanner[]): string { if (ads.length === 0) return ''; const topAd = ads.find(a => a.placement === 'top'); const sidebarAd = ads.find(a => a.placement === 'sidebar'); const bottomAd = ads.find(a => a.placement === 'bottom'); let html = ''; if (topAd) { html += ` <div class="ad-banner ad-top" data-ad-id="${topAd.id}" onclick="trackAdClick('${topAd.id}')"> <div class="ad-content"> <div class="ad-image"> <img src="${topAd.imageUrl}" alt="${topAd.title}" loading="lazy" onerror="this.style.display='none'"> </div> <div class="ad-text"> <h3>${topAd.title}</h3> <p>${topAd.description}</p> </div> <a href="${topAd.linkUrl}" target="_blank" rel="sponsored noopener" class="ad-cta"> ${topAd.ctaText} → </a> <button class="ad-close" onclick="closeAd('${topAd.id}')" aria-label="Cerrar anuncio">✕</button> <span class="ad-label">Patrocinado</span> </div> </div> `; } if (sidebarAd) { html += ` <div class="ad-sidebar" data-ad-id="${sidebarAd.id}" onclick="trackAdClick('${sidebarAd.id}')"> <div class="ad-sidebar-content"> <div class="ad-sidebar-image"> <img src="${sidebarAd.imageUrl}" alt="${sidebarAd.title}" loading="lazy" onerror="this.style.display='none'"> </div> <div class="ad-sidebar-text"> <h4>${sidebarAd.title}</h4> <p>${sidebarAd.description}</p> </div> <a href="${sidebarAd.linkUrl}" target="_blank" rel="sponsored noopener" class="ad-sidebar-cta"> ${sidebarAd.ctaText} </a> </div> </div> `; } if (bottomAd) { html += ` <div class="ad-footer" data-ad-id="${bottomAd.id}" onclick="trackAdClick('${bottomAd.id}')"> <span class="ad-footer-label">Patrocinado por</span> <a href="${bottomAd.linkUrl}" target="_blank" rel="sponsored noopener"> ${bottomAd.title} </a> <span class="ad-footer-desc">${bottomAd.description}</span> </div> `; } return html; } // Añadir estilos al panel (en getDashboardHTML) // Añadir JavaScript para seguimiento (en getDashboardHTML) ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ MÓDULO 3: ADMINISTRACIÓN DE ANUNCIOS (src/ad-admin.ts) ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Crear panel de administración para gestionar anuncios. ```typescript // src/ad-admin.ts import { AdvertisingManager } from './advertising'; import express from 'express'; const app = express(); app.use(express.json()); const adManager = new AdvertisingManager(); // ============================================================ // PUNTOS FINALES DE ADMINISTRACIÓN // ============================================================ // Listar todos los anuncios app.get('/api/admin/ads', async (req, res) => { const stats = adManager.getStats(); res.json({ success: true, data: stats }); }); // Crear nuevo anuncio app.post('/api/admin/ads', async (req, res) => { try { const ad = req.body; await adManager.addAd(ad); res.json({ success: true, message: 'Anuncio creado exitosamente' }); } catch (err: any) { res.status(400).json({ error: err.message }); } }); // Actualizar anuncio app.put('/api/admin/ads/:id', async (req, res) => { try { const { id } = req.params; const updates = req.body; await adManager.updateAd(id, updates); res.json({ success: true }); } catch (err: any) { res.status(400).json({ error: err.message }); } }); // Eliminar anuncio app.delete('/api/admin/ads/:id', async (req, res) => { try { const { id } = req.params; await adManager.removeAd(id); res.json({ success: true }); } catch (err: any) { res.status(400).json({ error: err.message }); } }); // Activar/Desactivar anuncio app.patch('/api/admin/ads/:id/toggle', async (req, res) => { try { const { id } = req.params; const { active } = req.body; await adManager.toggleAd(id, active); res.json({ success: true }); } catch (err: any) { res.status(400).json({ error: err.message }); } }); // Obtener configuración app.get('/api/admin/config', async (req, res) => { const config = adManager.getConfig(); res.json({ success: true, data: config }); }); // Actualizar configuración app.patch('/api/admin/config', async (req, res) => { try { await adManager.updateConfig(req.body); res.json({ success: true }); } catch (err: any) { res.status(400).json({ error: err.message }); } }); app.listen(3005, () => { console.log(` ╔════════════════════════════════════════════════════════╗ ║ 📊 Panel de administración de anuncios ║ ║ 🔗 http://localhost:3005 ║ ║ 📋 Puntos finales: /api/admin/ads, /api/admin/config ║ ╚═══════════════════════════════════════════════════════╝ `); }); ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ MÓDULO 4: CONFIGURACIÓN Y ARCHIVOS DE PUBLICIDAD ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Crear los archivos de configuración iniciales: .devmind/ads.json: ```json [ { "id": "devmind-pro", "type": "banner", "title": "🧠 ¿Quieres más poder?", "description": "Actualiza a DevMind Pro y obtén acceso ilimitado a todas las herramientas. Sin límites, con memoria infinita.", "imageUrl": "/assets/pro-banner.png", "linkUrl": "/pricing", "ctaText": "Ver Planes", "prioridad": 10, "isActive": true, "impresiones": 0, "clics": 0, "conversionRate": 0, "startDate": "2026-06-18T00:00:00.000Z", "endDate": "2027-06-18T00:00:00.000Z", "targetAudience": ["gratis"], "ubicación": "arriba" }, { "id": "sponsor-railway", "type": "banner", "title": "🚀 Despliega con Railway", "description": "El hosting más fácil para tus proyectos. $5 de crédito al registrarte con código DEVMIND.", "imageUrl": "https://railway.app/brand/logo-dark.png", "linkUrl": "https://railway.app?ref=devmind", "ctaText": "Probar Railway", "prioridad": 8, "isActive": true, "impresiones": 0, "clics": 0, "conversionRate": 0, "startDate": "2026-06-18T00:00:00.000Z", "endDate": "2026-09-18T00:00:00.000Z", "targetAudience": ["todos"], "ubicación": "arriba" }, { "id": "sponsor-educative", "type": "sidebar", "title": "📚 Aprende con Educative", "description": "Cursos interactivos de programación. 20% de descuento con código DEVMIND20.", "imageUrl": "https://educative.io/assets/images/logo.png", "linkUrl": "https://educative.io?ref=devmind", "ctaText": "Ver Cursos", "prioridad": 7, "isActive": verdadero, "impresiones": 0, "clics": 0, "conversionRate": 0, "startDate": "2026-06-18T00:00:00.000Z", "endDate": "2026-08-18T00:00:00.000Z", "targetAudience": ["all"], "placement": "sidebar" } ] ``` .devmind/ad-config.json: ```json { "showAds": true, "adRefreshInterval": 30000, "maxAdsPerPage": 3, "premiumAdvertisers": [] } ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ MÓDULO 5: GUIÓN DE PRUEBA DE PUBLICIDAD ═════════════════════════════════════════════════════════════════════════════ test/advertising.test.ts: ```typescript // test/advertising.test.ts import { AdvertisingManager } from '../src/advertising'; async function testAdvertising() { console.log('🧪 Probando sistema de publicidad...\n'); const adManager = new AdvertisingManager(); // 1. Probar carga de anuncios console.log('📋 Anuncios cargados:'); const stats = adManager.getStats(); console.log(` Total: ${stats.ads.length} anuncios`); // 2. Probar segmentación console.log('\n🎯 Anuncios para usuario Free:'); const freeAds = adManager.getAdsForUser('free', 3); freeAds.forEach(ad => console.log(` - ${ad.title} (${ad.placement})`)); console.log('\n🎯 Anuncios para usuario Pro:'); const proAds = adManager.getAdsForUser('pro', 3); proAds.forEach(ad => console.log(` - ${ad.title} (${ad.placement})`)); // 3. Probar tracking console.log('\n📊 Tracking de clicks:'); if (freeAds.length > 0) { const testAd = freeAds[0]; adManager.trackClick(testAd.id); const updatedStats = adManager.getStats(); const adStats = updatedStats.ads.find(a => a.id === testAd.id); console.log(` ${testAd.title}: ${adStats?.clicks || 0} clicks`); } // 4. Probar cierre de anuncios console.log('\n🚫 Cerrando anuncio...'); if (freeAds.length > 0) { adManager.closeAd(freeAds[0].id); const afterClose = adManager.getAdsForUser('free', 3); console.log(` Anuncios restantes: ${afterClose.length}`); } console.log('\n✅ Pruebas completadas'); } testAdvertising().catch(console.error); ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ COMANDOS PARA PROBAR ═══════════════════════════════════════════════════════════════════════════════════ ```bash # 1. Iniciar dashboard con publicidad npx tsx src/index.ts --dashboard # 2. Probar endpoints de publicidad curl http://localhost:3001/api/ad/refresh curl -X POST http://localhost:3001/api/ad/click -H "Content-Type: application/json" -d '{"adId":"devmind-pro"}' # 3. Probar admin panel npx tsx src/ad-admin.ts # 4. Probar tests npx tsx test/advertising.test.ts ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ INTEGRACIÓN FINAL ═══════════════════ ════════════════════ ════════════════════ ════════════════════ Modificar src/index.ts para incluir el sistema de publicidad: ```typescript // src/index.ts - AÑADIR import { AdvertisingManager } from './advertising'; // En la inicialización const adManager = new AdvertisingManager(); // Comando para estadísticas de anuncios if (command === '--ad-stats') { const stats = adManager.getStats(); console.log('\n📊 Estadísticas de Anuncios:\n'); console.log(` Impresiones totales: ${stats.totalImpressions}`); console.log(` Total de clics: ${stats.totalClicks}`); console.log(` CTR: ${stats.overallCTR}\n`); console.log('Detalles:'); stats.ads.forEach(ad => { console.log(` ${ad.title}: ${ad.impressions} impresiones, ${ad.clicks} clics (${ad.ctr})`); }); return; } // Comando para gestionar anuncios if (command === '--ad-list') { const stats = adManager.getStats(); console.log('\n📋 Anuncios activos:\n'); stats.ads.filter(a => a.isActive).forEach(ad => { console.log(` ✅ ${ad.title} (${ad.id}) - ${ad.placement}`); console.log(` ${ad.description}`); }); return; } ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ ENTREGABLE FINAL ════════════════════════════════════════════════════════════════════════════════════════════ Género: 1. src/advertising.ts (sistema completo) 2. src/dashboard.ts (modificado con publicidad) 3. src/ad-admin.ts (panel de administración) 4. test/advertising.test.ts (pruebas) 5. .devmind/ads.json (anuncios por defecto) 6. .devmind/ad-config.json (configuración) 7. Modificaciones en src/index.ts El sistema debe ser funcional al copiar y pegar. ``` --- ## 🚀 COMANDOS FINALES ```bash # 1. Probar el sistema completo npx tsx src/index.ts --dashboard # 2. Ver estadísticas de anuncios npx tsx src/index.ts --ad-stats # 3. Listar anuncios activos npx tsx src/index.ts --ad-list # 4. Probar admin panel npx tsx src/ad-admin.ts # 5. Ejecutar pruebas npx tsx test/advertising.test.ts ``` --- **Este mensaje está listo para copiar y pegar en GLM 4.7. El programador generará TODO el sistema de publicidad integrado con el tablero.** 🚀log('\n📋 Anuncios activos:\n'); stats.ads.filter(a => a.isActive).forEach(ad => { console.log(` ✅ ${ad.title} (${ad.id}) - ${ad.placement}`); console.log(` ${ad.description}`); }); return; } ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ ENTREGABLE FINAL ════════════════════════════════════════════════════════════════════════════════════════════ Género: 1. src/advertising.ts (sistema completo) 2. src/dashboard.ts (modificado con publicidad) 3. src/ad-admin.ts (panel de administración) 4. test/advertising.test.ts (pruebas) 5. .devmind/ads.json (anuncios por defecto) 6. .devmind/ad-config.json (configuración) 7. Modificaciones en src/index.ts El sistema debe ser funcional al copiar y pegar. ``` --- ## 🚀 COMANDOS FINALES ```bash # 1. Probar el sistema completo npx tsx src/index.ts --dashboard # 2. Ver estadísticas de anuncios npx tsx src/index.ts --ad-stats # 3. Listar anuncios activos npx tsx src/index.ts --ad-list # 4. Probar admin panel npx tsx src/ad-admin.ts # 5. Ejecutar pruebas npx tsx test/advertising.test.ts ``` --- **Este mensaje está listo para copiar y pegar en GLM 4.7. El programador generará TODO el sistema de publicidad integrado con el tablero.** 🚀log('\n📋 Anuncios activos:\n'); stats.ads.filter(a => a.isActive).forEach(ad => { console.log(` ✅ ${ad.title} (${ad.id}) - ${ad.placement}`); console.log(` ${ad.description}`); }); return; } ``` ═══════════════════ ════════════════════ ════════════════════ ════════════════════ ENTREGABLE FINAL ════════════════════════════════════════════════════════════════════════════════════════════ Género: 1. src/advertising.ts (sistema completo) 2. src/dashboard.ts (modificado con publicidad) 3. src/ad-admin.ts (panel de administración) 4. test/advertising.test.ts (pruebas) 5. .devmind/ads.json (anuncios por defecto) 6. .devmind/ad-config.json (configuración) 7. Modificaciones en src/index.ts El sistema debe ser funcional al copiar y pegar. ``` --- ## 🚀 COMANDOS FINALES ```bash # 1. Probar el sistema completo npx tsx src/index.ts --dashboard # 2. Ver estadísticas de anuncios npx tsx src/index.ts --ad-stats # 3. Listar anuncios activos npx tsx src/index.ts --ad-list # 4. Probar admin panel npx tsx src/ad-admin.ts # 5. Ejecutar pruebas npx tsx test/advertising.test.ts ``` --- **Este mensaje está listo para copiar y pegar en GLM 4.7. El programador generará TODO el sistema de publicidad integrado con el tablero.** 🚀 Mostrar mensaje completo
+   787→   787→
+   788→   788→Proceso de pensamiento
+   789→   789→Aquí tienes la implementación completa de los archivos necesarios para el sistema de publicidad.
+   790→   790→
+   791→   791→Mantuvo la estructura de archivos solicitada, integrando lógica robusta, segmentación de planos (Free vs Pro), y persistencia de datos.
+   792→   792→
+   793→   793→1. Archivo:src/advertising.ts
+   794→   794→Este módulo gestiona qué anuncios mostrar, a quién, y cuántos clics han recibido.
+   795→   795→
+   796→   796→mecanografiado
+   797→   797→
+   798→   798→// src/advertising.ts
+   799→   799→    }
+   800→   800→  }
+   801→   801→
+   802→   802→  // Métodos CRUD
+   803→   803→  async addAd(ad: Omit<AdBanner>): Promise<void> {
+   804→   804→    const newAd = {
+   805→   805→      ...ad,
+   806→   806→      impressions: 0,
+   807→   807→      clicks: 0,
+   808→   808→      conversionRate: 0,
+   809→   809→      isActive: true
+   810→   810→    };
+   811→   811→    this.ads.push(newAd);
+   812→   812→    await this.saveAds();
+   813→   813→  }
+   814→   814→
+   815→   815→  async removeAd(adId: string): Promise<void> {
+   816→   816→    this.ads = this.ads.filter(a => a.id !== adId);
+   817→   817→    await this.saveAds();
+   818→   818→  }
+   819→   819→
+   820→   820→  async updateConfig(config: Partial<AdConfig>): Promise<void> {
+   821→   821→    this.config = { ...this.config, ...config };
+   822→   822→    const configPath = path.join(process.cwd(), '.devmind', 'ad-config.json');
+   823→   823→    await fs.mkdir(path.dirname(configPath), { recursive: true });
+   824→   824→    await fs.writeFile(configPath, JSON.stringify(this.config, null, 2), 'utf-8');
+   825→   825→  }
+   826→   826→
+   827→   827→  // Guardar en disco
+   828→   828→  private async saveStats(): Promise<void> {
+   829→   829→    const statsDir = path.join(process.cwd(), '.devmind');
+   830→   830→    await fs.mkdir(statsDir, { recursive: true });
+   831→   831→    
+   832→   832→    await fs.writeFile(
+   833→   833→      path.join(statsDir, 'stats.json'),
+   834→   834→      JSON.stringify(this.stats, null, 2),
+   835→   835→      'utf-8'
+   836→   836→    );
+   837→   837→    
+   838→   838→    // Guardar lista de anuncios
+   839→   839→    await fs.writeFile(
+   840→   840→      path.join(statsDir, 'ads.json'),
+   841→   841→      JSON.stringify(this.ads, null, 2),
+   842→   842→      'utf-8'
+   843→   843→    );
+   844→   844→  }
+   845→   845→
+   846→   846→  private startStatsFlush(): void {
+   847→   847→    // Guardar métricas cada 60s
+   848→   848→    setInterval(() => {
+   849→   849→      this.saveStats();
+   850→   850→    }, 60000);
+   851→   851→  }
+   852→   852→}
+   853→   853→2. Modificación:src/dashboard.ts
+   854→   854→Agrega los endpoints de seguimiento y el generador de HTML para inyectar los anuncios en la interfaz.
+   855→   855→
+   856→   856→mecanografiado
+   857→   857→
+   858→   858→// src/dashboard.ts (Añadir imports)
+   859→   859→import { AdvertisingManager, AdBanner } from './advertising';
+   860→   860→
+   861→   861→// --- EN CONSTRUCTOR ---
+   862→   862→// ...
+   863→   863→constructor(config: DashboardConfig) {
+   864→   864→  // ...
+   865→   865→  this.server = http.createServer((req, res) => this.handleRequest(req, res));
+   866→   866→  this.adManager = new AdvertisingManager({
+   867→   867→    showAds: true,
+   868→   868→    maxAdsPerPage: 3
+   869→   869→  });
+   870→   870→  // ...
+   871→   871→}
+   872→   872→
+   873→   873→// --- EN HANDLE REQUEST ---
+   874→   874→private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+   875→   875→  const url = new URL(req.url || '/', `http://localhost:${this.config.port}`);
+   876→   876→  
+   877→   877→  // ... CORS ...
+   878→   878→  
+   879→   879→  // 1. ENDPOINTS DE PUBLICIDAD (Antes de /dashboard y /chat)
+   880→   880→  
+   881→   881→  if (url.pathname === '/api/ad/refresh' && req.method === 'GET') {
+   882→   882→    const userPlan = req.headers['x-user-plan'] || 'free';
+   883→   883→    const ads = this.adManager.getAdsForUser(userPlan as string, 3);
+   884→   884→    
+   885→   885→    res.setHeader('Content-Type', 'application/json');
+   886→   886→    res.end(JSON.stringify({ 
+   887→   887→      success: 
+   888→   888→Continuación de :src/dashboard.ts
+   889→   889→
+   890→   890→mecanografiado
+   891→   891→
+   892→   892→      success: true,
+   893→   893→      ads: ads.map(ad => this.generateAdHTML([ad])) // Genera el HTML
+   894→   894→    }));
+   895→   895→    return;
+   896→   896→  }
+   897→   897→
+   898→   898→  if (url.pathname === '/api/ad/click' && req.method === 'POST') {
+   899→   899→    const body = await this.parseBody(req);
+   900→   900→    
+   901→   901→    if (body && body.adId) {
+   902→   902→      this.adManager.trackClick(body.adId);
+   903→   903→      res.setHeader('Content-Type', '    if (body.id === task_complete) { ... }'
+   904→   904→Continuación de :src/dashboard.ts
+   905→   905→
+   906→   906→mecanografiado
+   907→   907→
+   908→   908→      success: true,
+   909→   909→      clicks: this.adManager.getStats().totalClicks
+   910→   910→    }));
+   911→   911→    return;
+   912→   912→  }
+   913→   913→
+   914→   914→  if (url.pathname === '/api/ad/close' && req.method === 'POST') {
+   915→   915→    const body = await this.parseBody(req);
+   916→   916→    if (body && body.adId) {
+   917→   917→      this.adManager.closeAd(body.adId);
+   918→   918→      res.setHeader('Content-Type', '    if (body.id === '...',
+   919→   919→Continuación de :src/dashboard.ts
+   920→   920→
+   921→   921→mecanografiado
+   922→   922→
+   923→   923→      success: true
+   924→   924→    });
+   925→   925→    return;
+   926→   926→  }
+   927→   927→
+   928→   928→  // ... resto de lógica del dashboard ...
+   929→   929→  // ...
+   930→   930→Continuación de :src/dashboard.ts
+   931→   931→
+   932→   932→mecanografiado
+   933→   933→
+   934→   934→  
+   935→   935→
+   936→   936→    // Buscar anuncios por ubicación
+   937→   937→    const topAd = ads.find(a => a.placement === 'top') && a.isActive);
+   938→   938→    const sidebarAd = ads.find(a => a.placement 'sidebar' && a.isActive);
+   939→   939→    const bottomAd = ads.find(a => a.placement 'bottom' && a.isActive);
+   940→   940→
+   941→   941→    let html = '';
+   942→   942→
+   943→   943→    // 1. Banner Superior (Dashboard Header o Banner dentro del chat)
+   944→   944→    if (topAd) {
+   945→   945→      html += `
+   946→   946→    <div class="ad-unit ad-top">
+   947→   947→      <a href="${topAd.imageUrl}" target="_blank" rel="sponsored noopener" class="ad-link" onclick="window.open('${topAd.linkUrl}'); return false;">
+   948→   948→        <div class="ad-card">
+   949→   949→          <img src="${topAd.imageUrl}" alt="${topAd.title}" class="ad-image">
+   950→   950→          <div class="ad-content">
+   951→   951→            <h3>${topAd.title}</h3>
+   952→   952→            <p>${topAd.description}</p>
+   953→   953→            <div class="ad-action">
+   954→   954→              <div class="ad-cta">${topAd.ctaText} &rarr;</div>
+   955→   955→              <button class="ad-close" onclick="fetch('/api/ad/close', {
+   956→   956→        ```
+   957→   957→
+   958→   958→Continuación de `src/dashboard.ts`:
+   959→   959→
+   960→   960→```typescript
+   961→   961→
+   962→   962→              type: 'button'
+   963→   963→            onclick="fetch('/api/ad/close', {
+   964→   964→              method: 'POST',
+   965→   965→              headers: { 'Content-Type': '   -              type: 'button',
+   966→   966→              body: JSON.stringify({ adId: '${topAd.id}' })
+   967→   967→            })">X</button>
+   968→   968→            <div class="ad-label">Publicidad</div>
+   969→   969→          </div>
+   970→   970→        </div>
+   971→   971→      </div>
+   972→   972→    `;
+   973→   973→    }
+   974→   974→
+   975→   975→    // 2. Sidebar
+   976→   976→    if (sidebarAd) {
+   977→   977→      html += `
+   978→   978→    <div class="ad-unit ad-sidebar">
+   979→   979→      <a href="${sidebarAd.imageUrl}" target="_blank" target
+   980→   980→    
+   981→   981→Continuación de :src/dashboard.ts
+   982→   982→
+   983→   983→mecanografiado
+   984→   984→
+   985→   985→      target="_blank" rel="sponsored noopener" class="ad-sidebar-link">
+   986→   986→        <div class="ad-sidebar-content">
+   987→   987→          <div class="ad-sidebar-image">
+   988→   988→            <img src="${sidebarAd.imageUrl}" alt="${sidebarAd.title}" style="width: 100%; max-width:     // ... estilos CSS en dashboard ...
+   989→   989→              src="${sidebarAd.imageUrl}" alt="${sidebarAd.title}" class="ad-sidebar-image" loading="lazy">
+   990→   990→            </div>
+   991→   991→            <div class="ad-sidebar-text">
+   992→   992→              <h4>${sidebarAd.title}</h4>
+   993→   993→              <p>${sidebarAd.description}</p>
+   994→   994→              <span class="ad-sidebar- CTA">${sidebarAd.ctaText}</span>
+   995→   995→            </div>
+   996→   996→          </div>
+   997→   997→      </a>
+   998→   998→    </div>
+
+[showing lines 599-998 of 1302; use offset=999 with limit to continue reading]

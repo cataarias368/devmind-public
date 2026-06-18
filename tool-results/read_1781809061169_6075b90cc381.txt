@@ -1,0 +1,502 @@
+     1→     1→- generic
+     2→     2→  - generic
+     3→     3→    - generic
+     4→     4→      - generic
+     5→     5→        - generic
+     6→     6→          - StaticText "Agent Loop with Tools and Prompts"
+     7→     7→          - image
+     8→     8→          - StaticText "Loading..."
+     9→     9→          - generic
+    10→    10→            - generic
+    11→    11→              - StaticText "Y SI A CADA VES QUE SALE UN NUEVO MODELO LO COBRAN NOSOTROS QUE OBTENDRIAMOS DE ESAS VENTAS O COMO OBTENER GANANCIAS DE ELLOS "
+    12→    12→              - generic "Copy" [ref=e19] focusable [tabindex]
+    13→    13→          - generic
+    14→    14→            - image "profile"
+    15→    15→            - generic "GLM-4.7" [ref=e5] focusable [tabindex]
+    16→    16→              - StaticText "GLM-4.7"
+    17→    17→            - button "Thought Process" [ref=e20]
+    18→    18→              - image
+    19→    19→              - StaticText "Thought Process"
+    20→    20→              - image
+    21→    21→            - paragraph
+    22→    22→              - StaticText "Esta es la pregunta del millón. Aquí es donde separas a los \"script kiddies\" de los \"negociadores de tecnología\"."
+    23→    23→            - paragraph
+    24→    24→              - StaticText "La respuesta corta es: "
+    25→    25→              - strong
+    26→    26→                - StaticText "No cobramos por el modelo en sí, cobramos por la \"inteligencia de enrutamiento\" y la \"conveniencia\"."
+    27→    27→            - paragraph
+    28→    28→              - StaticText "Si el usuario trae su propia API Key (BYOK - Bring Your Own Key) en la versión Self-Hosted, "
+    29→    29→              - strong
+    30→    30→                - StaticText "tú no recibes nada de OpenAI/Anthropic"
+    31→    31→              - StaticText ". El usuario le paga a ellos directamente. Tu negocio ahí está en la "
+    32→    32→              - strong
+    33→    33→                - StaticText "Licencia Enterprise"
+    34→    34→              - StaticText " o en la "
+    35→    35→              - strong
+    36→    36→                - StaticText "Solución Cloud"
+    37→    37→              - StaticText "."
+    38→    38→            - paragraph
+    39→    39→              - StaticText "Aquí tienes exactamente cómo monetizar el sistema de \"Auto-Discovery\" sin ser intrusivos:"
+    40→    40→            - separator
+    41→    41→            - heading "1. EL MODELO \"MARKETPLACE DE INTELIGENCIA\" (Cloud)" [level=3, ref=e21]
+    42→    42→            - paragraph
+    43→    43→              - StaticText "En la versión SaaS (DevMind Cloud), tú eres el intermediario. Aquí es donde haces dinero real con los nuevos modelos."
+    44→    44→            - paragraph
+    45→    45→              - strong
+    46→    46→                - StaticText "El Truco del Arbitraje de Modelos:"
+    47→    47→            - list
+    48→    48→              - listitem [level=1]
+    49→    49→                - ListMarker "• "
+    50→    50→                - strong
+    51→    51→                  - StaticText "Tú tienes GLM-4 y DeepSeek (Baratos)."
+    52→    52→              - listitem [level=1]
+    53→    53→                - ListMarker "• "
+    54→    54→                - strong
+    55→    55→                  - StaticText "El usuario quiere GPT-4o (Caro)."
+    56→    56→            - paragraph
+    57→    57→              - strong
+    58→    58→                - StaticText "La Estrategia de Cobro:"
+    59→    59→              - StaticText "\nCuando el sistema detecta que la tarea requiere GPT-4o (según tu "
+    60→    60→              - code [ref=e59] clickable [cursor:pointer]
+    61→    61→                - StaticText "ModelEvaluator"
+    62→    62→              - StaticText "), el sistema ejecuta esto:"
+    63→    63→            - list
+    64→    64→              - listitem [level=1]
+    65→    65→                - ListMarker "1. "
+    66→    66→                - emphasis
+    67→    67→                  - StaticText "\"Esta tarea requiere GPT-4o. Costo: 5 Créditos.\""
+    68→    68→              - listitem [level=1]
+    69→    69→                - ListMarker "2. "
+    70→    70→                - StaticText "El usuario paga."
+    71→    71→              - listitem [level=1]
+    72→    72→                - ListMarker "3. "
+    73→    73→                - StaticText "Tú cobras al usuario el equivalente a $0.10 por \"tarea compleja\"."
+    74→    74→              - listitem [level=1]
+    75→    75→                - ListMarker "4. "
+    76→    76→                - StaticText "Tú pagas a OpenAI $0.05."
+    77→    77→              - listitem [level=1]
+    78→    78→                - ListMarker "5. "
+    79→    79→                - strong
+    80→    80→                  - StaticText "Tu ganancia neta:"
+    81→    81→                - StaticText " Margen del 100% por el uso de tu inteligencia de enrutamiento."
+    82→    82→            - paragraph
+    83→    83→              - strong
+    84→    84→                - StaticText "¿Por qué pagan?"
+    85→    85→              - StaticText "\nPorque el usuario no sabe qué modelo usar ni cómo configurarlo. Tú eres el experto. Ellos pagan por tu "
+    86→    86→              - strong
+    87→    87→                - StaticText "eficiencia"
+    88→    88→              - StaticText ", no solo por el token."
+    89→    89→            - separator
+    90→    90→            - heading "2. EL SERVICIO DE \"OPTIMIZACIÓN DE MODELOS\" (Venta de Conocimiento)" [level=3, ref=e22]
+    91→    91→            - paragraph
+    92→    92→              - StaticText "Aquí es donde tu sistema de evaluación ("
+    93→    93→              - code [ref=e60] clickable [cursor:pointer]
+    94→    94→                - StaticText "ModelEvaluator"
+    95→    95→              - StaticText ") se vuelve un producto en sí mismo."
+    96→    96→            - paragraph
+    97→    97→              - StaticText "Imagina que sale \"Claude-4\". Tú lo escaneas, lo pruebas, y generas un reporte:"
+    98→    98→            - list
+    99→    99→              - listitem [level=1]
+   100→   100→                - ListMarker "• "
+   101→   101→                - emphasis
+   102→   102→                  - StaticText "\"Claude-4 mejora un 15% en razonamiento pero es 40% más lento que GPT-4o.\""
+   103→   103→              - listitem [level=1]
+   104→   104→                - ListMarker "• "
+   105→   105→                - emphasis
+   106→   106→                  - StaticText "\"Prompt recomendado para Claude-4: 'Sé conciso, usa formato JSON.' \""
+   107→   107→            - paragraph
+   108→   108→              - strong
+   109→   109→                - StaticText "El Producto:"
+   110→   110→              - StaticText "\nVendes "
+   111→   111→              - strong
+   112→   112→                - StaticText "\"System Prompts Optimizados por DevMind\""
+   113→   113→              - StaticText "."
+   114→   114→            - list
+   115→   115→              - listitem [level=1]
+   116→   116→                - ListMarker "• "
+   117→   117→                - strong
+   118→   118→                  - StaticText "Cómo:"
+   119→   119→                - StaticText " Empresas como Jira o Salesforce usan LLMs internamente. No saben cómo \"extraerle el jugo\" al modelo nuevo."
+   120→   120→              - listitem [level=1]
+   121→   121→                - ListMarker "• "
+   122→   122→                - strong
+   123→   123→                  - StaticText "La Venta:"
+   124→   124→                - StaticText " \"Suscríbete a DevMind Enterprise para recibir los "
+   125→   125→                - strong
+   126→   126→                  - StaticText "'Golden Prompts'"
+   127→   127→                - StaticText " actualizados automáticamente para cada nuevo modelo que sale.\""
+   128→   128→              - listitem [level=1]
+   129→   129→                - ListMarker "• "
+   130→   130→                - strong
+   131→   131→                  - StaticText "Precio:"
+   132→   132→                - StaticText " $99/mes + Ahorro de miles de dólares en tokens malgastados."
+   133→   133→            - separator
+   134→   134→            - heading "3. EL CONTRATO DE MANTENIMIENTO EMPRESARIAL (Self-Hosted)" [level=3, ref=e23]
+   135→   135→            - paragraph
+   136→   136→              - StaticText "Las grandes empresas odian actualizar software."
+   137→   137→            - list
+   138→   138→              - listitem [level=1]
+   139→   139→                - ListMarker "• "
+   140→   140→                - emphasis
+   141→   141→                  - StaticText "Problema:"
+   142→   142→                - StaticText " \"Instalamos DevMind v1.0. Salieron GPT-5 y Gemini 2.0. Tenemos que contratar a un desarrollador para agregar los adaptadores.\""
+   143→   143→              - listitem [level=1]
+   144→   144→                - ListMarker "• "
+   145→   145→                - emphasis
+   146→   146→                  - StaticText "Solución:"
+   147→   147→                - strong
+   148→   148→                  - StaticText "Contrato de Actualización Continua."
+   149→   149→            - paragraph
+   150→   150→              - strong
+   151→   151→                - StaticText "Estructura del Contrato:"
+   152→   152→            - list
+   153→   153→              - listitem [level=1]
+   154→   154→                - ListMarker "• "
+   155→   155→                - strong
+   156→   156→                  - StaticText "Precio:"
+   157→   157→                - StaticText " $5,000 / año + Soporte."
+   158→   158→              - listitem [level=1]
+   159→   159→                - ListMarker "• "
+   160→   160→                - strong
+   161→   161→                  - StaticText "Lo que recibe la empresa:"
+   162→   162→                - list
+   163→   163→                  - listitem [level=2]
+   164→   164→                    - code [ref=e246] clickable [cursor:pointer]
+   165→   165→                  - listitem [level=2]
+   166→   166→                  - listitem [level=2]
+   167→   167→                  - listitem [level=2]
+   168→   168→            - paragraph
+   169→   169→              - strong
+   170→   170→                - StaticText "Valor:"
+   171→   171→              - StaticText " Tranquilidad. Saben que su infraestructura de IA nunca quedará obsoleta."
+   172→   172→            - separator
+   173→   173→            - heading "4. EL \"UPSELL\" VISUAL (En la UI)" [level=3, ref=e24]
+   174→   174→            - paragraph
+   175→   175→              - StaticText "En el Dashboard y la Extensión de VS Code, usa el descubrimiento de modelos como herramienta de marketing:"
+   176→   176→            - list
+   177→   177→              - listitem [level=1]
+   178→   178→                - ListMarker "• "
+   179→   179→                - strong
+   180→   180→                  - StaticText "Notificación:"
+   181→   181→                - emphasis
+   182→   182→                  - StaticText "\"🎉 DevMind ha detectado un nuevo modelo: "
+   183→   183→                  - strong
+   184→   184→                  - StaticText ". 40% más rápido para tareas de matemáticas.\""
+   185→   185→              - listitem [level=1]
+   186→   186→                - ListMarker "• "
+   187→   187→                - strong
+   188→   188→                  - StaticText "Botón:"
+   189→   189→                - strong
+   190→   190→                  - StaticText "[Prueba GPT-5 Ahora]"
+   191→   191→              - listitem [level=1]
+   192→   192→                - ListMarker "• "
+   193→   193→                - strong
+   194→   194→                  - StaticText "Acción:"
+   195→   195→                - list
+   196→   196→                  - listitem [level=2]
+   197→   197→                    - StaticText ": \"Actualiza a Pro para usar modelos de última generación.\" (Funnel de conversión)."
+   198→   198→                  - listitem [level=2]
+   199→   199→                    - StaticText ": \"Este modelo usa 2x créditos. ¿Continuar?\" (Control de costos)."
+   200→   200→            - separator
+   201→   201→            - heading "5. RESUMEN DE INGRESOS POTENCIALES" [level=3, ref=e25]
+   202→   202→            - generic
+   203→   203→              - table
+   204→   204→                - rowgroup
+   205→   205→                  - row
+   206→   206→                    - columnheader "FUENTE DE INGRESO" [ref=e275]
+   207→   207→                    - columnheader "MECANISMO" [ref=e276]
+   208→   208→                    - columnheader "OBJETIVO" [ref=e277]
+   209→   209→                - row
+   210→   210→                  - cell "Arbitraje de API" [ref=e247]
+   211→   211→                  - cell "Cobras más por usar GPT-4 que lo que te cuesta a ti" [ref=e248]
+   212→   212→                  - cell "Usuarios Cloud que quieren calidad premium" [ref=e249]
+   213→   213→                - row
+   214→   214→                  - cell "Optimization as a Service" [ref=e250]
+   215→   215→                  - cell "Vendes prompts y configuraciones expertas" [ref=e251]
+   216→   216→                  - cell "Empresas que usan LLMs internamente" [ref=e252]
+   217→   217→                - row
+   218→   218→                  - cell "Actualización Automática" [ref=e253]
+   219→   219→                  - cell "Contrato de mantenimiento por licencia Enterprise" [ref=e254]
+   220→   220→                  - cell "Grandes corporaciones (Bancos, consultoras)" [ref=e255]
+   221→   221→                - row
+   222→   222→                  - cell "Lead Generation" [ref=e256]
+   223→   223→                  - cell "Ofrecer modelos nuevos como característica premium para subir a plan" [ref=e257]
+   224→   224→                  - cell "Usuarios Free -> Pro" [ref=e258]
+   225→   225→              - button [ref=e61]
+   226→   226→            - heading "Conclusión" [level=3, ref=e26]
+   227→   227→            - paragraph
+   228→   228→              - StaticText "No cobres \"por el modelo\". Cobra por "
+   229→   229→              - strong
+   230→   230→              - StaticText "."
+   231→   231→            - list
+   232→   232→              - listitem [level=1]
+   233→   233→              - listitem [level=1]
+   234→   234→            - paragraph
+   235→   235→              - StaticText "Esa "
+   236→   236→              - strong
+   237→   237→              - StaticText " son por las que las empresas pagan grandes sumas de dinero. 🚀"
+   238→   238→            - generic "Copy" [ref=e6] focusable [tabindex]
+   239→   239→          - generic
+   240→   240→            - generic
+   241→   241→              - generic
+   242→   242→                - StaticText "# 📋 PROMPT MAESTRO - TAREAS DE RENDIMIENTO PARA DEV MIND\n\nPerfecto. Te entrego un **prompt único y completo** para que el programador AI implemente **TODAS las tareas de rendimiento** que hemos identificado (15 tareas en total), organizadas por categorías.\n\n---\n\n```\nVas a implementar 15 tareas de rendimiento para el sistema DevMind Agent. Estas tareas son independientes de prompts y loops, y mejoran la eficiencia, memoria, paralelización y monitoreo del agente.\n\nEl sistema actual tiene: agent.ts, llm-provider.ts, index.ts, checkpoint.ts, memory.ts, safety.ts, y los módulos de imágenes, documentación, GitHub, etc.\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 1: TAREAS DE GESTIÓN DE CONTEXTO (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 1.1: COMPRESIÓN DE CONTEXTO\nArchivo: src/tasks/context-compression.ts\n\nRequisitos:\n- Identificar mensajes importantes (system, ✅, ERROR, CRITIQUE)\n- Resumir mensajes antiguos manteniendo: objetivo, decisiones, errores, estado\n- Mantener últimos 10 mensajes sin comprimir\n- Usar LLM para generar resúmenes\n- Devolver estructura: { role: 'system', content: '[RESUMEN] ...' }\n\nTAREA 1.2: VENTANA DESLIZANTE (Sliding Window)\nArchivo: src/tasks/sliding-window.ts\n\nRequisitos:\n- Mantener máximo 100 mensajes\n- Priorizar mensajes recientes y importantes\n- Método addMessage(message): añade con timestamp\n- Método getActiveWindow(): devuelve mensajes activos\n- Método evictLowestPriority(): elimina los menos relevantes\n- Cada mensaje tiene ID único y prioridad\n\nTAREA 1.3: PRIORIZACIÓN DE HERRAMIENTAS\nArchivo: src/tasks/tool-prioritization.ts\n\nRequisitos:\n- Analizar la tarea para determinar tipo (read/write/search/execute/general)\n- Asignar scores a cada herramienta según el tipo\n- Ordenar herramientas por score\n- Método prioritize(tools, task): devuelve herramientas ordenadas\n- Método analyzeTask(task): devuelve el tipo de tarea\n- Penalizar herramientas que no encajan con la tarea\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 2: TAREAS DE MEMORIA Y CACHÉ (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 2.1: CACHE SEMÁNTICO\nArchivo: src/tasks/semantic-cache.ts\n\nRequisitos:\n- Almacenar resultados por similitud semántica\n- Umbral de similitud: 0.85\n- Expiración: 1 hora\n- Método get(query): devuelve resultado cacheado o null\n- Método set(query, result): guarda en cache\n- Usar cosine similarity para comparar embeddings\n- Implementar embedding simple (hash o API)\n\nTAREA 2.2: MEMORIA DE CORTO PLAZO\nArchivo: src/tasks/short-term-memory.ts\n\nRequisitos:\n- Almacenar últimas 20 acciones con su resultado\n- Cada entrada: { action, result, timestamp, importance }\n- Importancia: 1-5 (asignada por el agente)\n- Si excede 20, eliminar los menos importantes\n- Método add(action, result, importance): añade entrada\n- Método getRecent(limit): devuelve últimas N acciones\n- Método getContext(): devuelve contexto formateado\n\nTAREA 2.3: MEMORIA EPISÓDICA\nArchivo: src/tasks/episodic-memory.ts\n\nRequisitos:\n- Almacenar episodios completos: { task, plan, result, success, timestamp }\n- Mantener últimos 100 episodios\n- Método add(task, plan, result, success): añade episodio\n- Método findSimilar(task): encuentra episodios similares\n- Similaridad por palabras clave (intersección/unión)\n- Devolver episodios similares formateados\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 3: TAREAS DE OPTIMIZACIÓN (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 3.1: ANTICIPACIÓN DE PASOS\nArchivo: src/tasks/step-anticipation.ts\n\nRequisitos:\n- Predecir próximos 3 pasos basado en estado actual y tarea\n- Método anticipateNextStep(currentState, task): devuelve array de predicciones\n- Método validatePrediction(prediction, actual): valida con similitud > 0.5\n- Usar LLM para generar predicciones\n- Almacenar predicciones para análisis posterior\n\nTAREA 3.2: PLANIFICACIÓN DINÁMICA\nArchivo: src/tasks/dynamic-planning.ts\n\nRequisitos:\n- Crear plan de 5-10 pasos atómicos\n- Si un paso falla, replanificar automáticamente\n- Método plan(task): genera plan inicial\n- Método adapt(stepResult): adapta plan según resultado\n- Método replan(): genera nuevo plan basado en errores\n- Mantener historial de planes y resultados\n\nTAREA 3.3: PROCESAMIENTO POR LOTES\nArchivo: src/tasks/batch-processing.ts\n\nRequisitos:\n- Agrupar operaciones similares en lotes\n- Tamaño máximo del lote: 10\n- Método add(operation, params): añade a lote\n- Método process(): ejecuta lote y devuelve resultados\n- Agrupar por tipo de operación\n- Ejecutar lote como una sola operación cuando sea posible\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 4: TAREAS DE MEJORA CONTINUA (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 4.1: AUTOEVALUACIÓN\nArchivo: src/tasks/self-evaluation.ts\n\nRequisitos:\n- Registrar métricas: steps, success, tokens, time\n- Método record(task, result): registra ejecución\n- Método evaluate(): devuelve promedio de steps, successRate, tokens, time\n- Método getPerformance(): 'excellent', 'good', 'needs-improvement'\n- successRate > 0.9 y steps < 10 = excellent\n- successRate > 0.7 y steps < 20 = good\n- Guardar métricas en .devmind/metrics.json\n\nTAREA 4.2: SUGERENCIA DE MEJORAS\nArchivo: src/tasks/improvement-suggestions.ts\n\nRequisitos:\n- Analizar resultados para generar sugerencias\n- Método suggest(currentResults): devuelve array de sugerencias\n- Verificar: tiempo de ejecución > 30s → sugerir batch processing\n- Verificar: successRate < 0.8 → sugerir Chain of Verification\n- Verificar: steps > 20 → sugerir Tree of Thoughts\n- Verificar: no usa memoria → sugerir guardar aprendizajes\n- Verificar: herramientas faltantes → sugerir uso\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 5: TAREAS DE PARALELIZACIÓN (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 5.1: EJECUCIÓN DE TAREAS INDEPENDIENTES\nArchivo: src/tasks/independent-execution.ts\n\nRequisitos:\n- Ejecutar tareas en paralelo cuando sean independientes\n- Método executeParallel(tasks, tools): ejecuta todas en paralelo\n- Cada tarea tiene contexto aislado (memoria separada)\n- Método createIsolatedTools(tools): clona herramientas sin estado compartido\n- Método executeWithIsolation(task, tools): ejecuta en aislamiento\n- Promise.all para ejecución paralela\n\nTAREA 5.2: PIPELINE PARALELO\nArchivo: src/tasks/parallel-pipeline.ts\n\nRequisitos:\n- Ejecutar etapas de un pipeline en paralelo\n- Método executePipeline(stages, input): ejecuta etapas secuencialmente\n- Cada etapa procesa datos en paralelo\n- Los datos se distribuyen entre workers\n- Si una etapa falla, capturar error sin detener todo\n- Devolver resultados de todas las etapas\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 6: TAREAS DE MONITOREO Y ALERTAS (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 6.1: HEALTH CHECK AUTOMÁTICO\nArchivo: src/tasks/health-check.ts\n\nRequisitos:\n- Verificar GLM_API_KEY configurada\n- Verificar espacio en disco > 10%\n- Verificar uso de memoria < 90%\n- Verificar herramientas disponibles\n- Método check(): devuelve { status, issues }\n- status: 'healthy', 'warning', 'critical'\n- Ejecutar automáticamente cada hora\n- Guardar historial de health checks\n\nTAREA 6.2: ALERTAS AUTOMÁTICAS\nArchivo: src/tasks/alerts.ts\n\nRequisitos:\n- Tres niveles: info, warning, critical\n- Método send(level, message): envía alerta\n- console.log para info, console.warn para warning, console.error para critical\n- Notificación a Slack si SLACK_WEBHOOK_URL está configurada\n- Para critical: enviar inmediatamente\n- Para warning: acumular y enviar cada 5 minutos\n- Guardar historial de alertas en .devmind/alerts.log\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 7: INTEGRACIÓN EN EL SISTEMA EXISTENTE\n═══════════════════════════════════════════════════════════════════════════════\n\nArchivo: src/tasks/index.ts (NUEVO)\n\nRequisitos:\n- Exportar todas las tareas\n- Inicializar todas las tareas al arrancar\n- Método startAllTasks(): inicia monitoreo y caché\n- Método stopAllTasks(): detiene tareas en background\n- Registrar tareas en el sistema\n\nModificar src/index.ts:\n- Importar e inicializar TaskManager\n- En el arranque: await taskManager.startAllTasks()\n- En el apagado: await taskManager.stopAllTasks()\n- Agregar comandos CLI: --health, --metrics, --suggest\n\nModificar src/agent.ts:\n- Usar compression de contexto antes de cada llamada LLM\n- Usar sliding window para mantener contexto\n- Usar tool prioritization antes de ejecutar herramientas\n- Usar semantic cache para resultados repetidos\n- Usar short-term memory para contexto local\n- Usar step anticipation para predecir próximos pasos\n- Usar dynamic planning para adaptarse a cambios\n- Usar batch processing para operaciones similares\n- Registrar métricas en self-evaluation\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 8: COMANDOS Y PRUEBAS\n═══════════════════════════════════════════════════════════════════════════════\n\nComandos a implementar:\n\nnpx tsx src/index.ts --health        → Ejecutar health check\nnpx tsx src/index.ts --metrics       → Mostrar métricas de rendimiento\nnpx tsx src/index.ts --suggest       → Obtener sugerencias de mejora\nnpx tsx src/index.ts --clear-cache   → Limpiar cache semántico\nnpx tsx src/index.ts --status        → Estado completo del sistema\n\nPruebas a incluir en cada archivo:\n\n// Cada tarea debe tener su propio test\n// Ejemplo: context-compression.test.ts\nimport { ContextCompressor } from './context-compression';\n// Test: compresión de contexto largo\n// Test: resumen mantiene información clave\n// Test: no comprime mensajes recientes\n\n═══════════════════════════════════════════════════════════════════════════════\nREGLAS DE IMPLEMENTACIÓN\n═══════════════════════════════════════════════════════════════════════════════\n\n1. TODOS los archivos en TypeScript con ESM imports\n2. TODOS los métodos documentados con JSDoc\n3. TODOS los errores manejados con try/catch\n4. TODOS los logs con console.error para debugging\n5. NO usar dependencias externas (solo Node.js built-ins)\n6. Los directorios .devmind y .agent_checkpoints deben crearse automáticamente\n7. Las tareas deben ser independientes (no dependen entre sí)\n8. Cada tarea debe tener su propio archivo en src/tasks/\n9. El TaskManager debe ser el orquestador central\n\n═══════════════════════════════════════════════════════════════════════════════\nARCHIVOS A CREAR\n═══════════════════════════════════════════════════════════════════════════════\n\nsrc/tasks/\n├── index.ts                    ← TaskManager (orquestador)\n├── context-compression.ts\n├── sliding-window.ts\n├── tool-prioritization.ts\n├── semantic-cache.ts\n├── short-term-memory.ts\n├── episodic-memory.ts\n├── step-anticipation.ts\n├── dynamic-planning.ts\n├── batch-processing.ts\n├── self-evaluation.ts\n├── improvement-suggestions.ts\n├── independent-execution.ts\n├── parallel-pipeline.ts\n├── health-check.ts\n└── alerts.ts\n\nArchivos a modificar:\n- src/index.ts (agregar comandos y TaskManager)\n- src/agent.ts (integrar tareas en el loop)\n- src/llm-provider.ts (usar cache semántico)\n\n═══════════════════════════════════════════════════════════════════════════════\nENTREGABLE\n═══════════════════════════════════════════════════════════════════════════════\n\nGenerame:\n1. Los 16 archivos completos (15 tareas + TaskManager)\n2. Las modificaciones en src/index.ts y src/agent.ts\n3. Los comandos CLI implementados\n4. Los tests básicos para cada tarea\n5. Un archivo .devmind/tasks-config.json con la configuración predeterminada\n\nEl sistema debe ser funcional al copiar y pegar los archivos.\n```\n\n---\n\n## 📦 COMPLEMENTO: COMANDO PARA EJECUTAR\n\n```bash\n# Copiar este prompt completo y pegarlo en GLM 4.7\n# Luego, cuando el programador AI entregue los archivos:\n\n# 1. Crear la estructura\nmkdir -p src/tasks\n\n# 2. Copiar cada archivo en su lugar\n\n# 3. Probar el sistema\nnpx tsx src/index.ts --health\nnpx tsx src/index.ts --metrics\nnpx tsx src/index.ts --suggest\n\n# 4. Ver el estado completo\nnpx tsx src/index.ts --status\n\n# 5. Probar el agente con las mejoras\nnpx tsx src/index.ts \"Refactoriza el módulo de autenticación\"\n```\n\n---\n\n**Este prompt está listo para copiar y pegar en GLM 4.7. El programador AI generará todo el código necesario.** 🚀 "
+   243→   243→                - button "Show full message" [ref=e86]
+   244→   244→              - generic "Copy" [ref=e27] focusable [tabindex]
+   245→   245→          - generic
+   246→   246→            - image "profile"
+   247→   247→            - generic "GLM-4.7" [ref=e7] focusable [tabindex]
+   248→   248→              - StaticText "GLM-4.7"
+   249→   249→            - button "Thought Process" [ref=e28]
+   250→   250→              - image
+   251→   251→              - StaticText "Thought Process"
+   252→   252→              - image
+   253→   253→            - paragraph
+   254→   254→              - StaticText "Aquí tienes la implementación completa de las 15 tareas de rendimiento, el orquestador ("
+   255→   255→              - code [ref=e62] clickable [cursor:pointer]
+   256→   256→              - StaticText ") y la integración en el sistema principal."
+   257→   257→            - separator
+   258→   258→            - heading "1. Tipos Compartidos" [level=3, ref=e29]
+   259→   259→            - generic
+   260→   260→              - StaticText "typescript"
+   261→   261→              - generic "Copy" [ref=e87] focusable [tabindex]
+   262→   262→                - button [ref=e160]
+   263→   263→              - generic
+   264→   264→                - textbox [ref=e161]: // src/tasks/types.ts
+   265→   265→export interface AgentMessage {
+   266→   266→  role: string;
+   267→   267→  content: string;
+   268→   268→  timestamp: number;
+   269→   269→  priority?: number;
+   270→   270→export interface ToolDefinition {
+   271→   271→  name: string;
+   272→   272→  description: string;
+   273→   273→  keywords: string[];
+   274→   274→export interface MemoryEntry {
+   275→   275→  action: string;
+   276→   276→  result: string;
+   277→   277→  timestamp: number;
+   278→   278→  importance: number; // 1-5
+   279→   279→export interface Episode {
+   280→   280→  task: string;
+   281→   281→  plan: string;
+   282→   282→  result: string;
+   283→   283→  success: boolean;
+   284→   284→  timestamp: number;
+   285→   285→export interface Metric {
+   286→   286→  timestamp: number;
+   287→   287→  success: boolean;
+   288→   288→  steps: number;
+   289→   289→  tokens: number;
+   290→   290→  time: number;
+   291→   291→                  - StaticText "// src/tasks/types.ts"
+   292→   292→                  - LineBreak "\n"
+   293→   293→                  - generic
+   294→   294→                  - generic
+   295→   295→                    - StaticText "  role: string;"
+   296→   296→                  - generic
+   297→   297→                    - StaticText "  content: string;"
+   298→   298→                  - generic
+   299→   299→                    - StaticText "  timestamp: number;"
+   300→   300→                  - generic
+   301→   301→                    - StaticText "  priority?: number;"
+   302→   302→                  - StaticText "}"
+   303→   303→                  - LineBreak "\n"
+   304→   304→                  - generic
+   305→   305→                  - generic
+   306→   306→                    - StaticText "  name: string;"
+   307→   307→                  - generic
+   308→   308→                    - StaticText "  description: string;"
+   309→   309→                  - generic
+   310→   310→                    - StaticText "  keywords: string[];"
+   311→   311→                  - StaticText "}"
+   312→   312→                  - LineBreak "\n"
+   313→   313→                  - generic
+   314→   314→                  - generic
+   315→   315→                    - StaticText "  action: string;"
+   316→   316→                  - generic
+   317→   317→                    - StaticText "  result: string;"
+   318→   318→                  - generic
+   319→   319→                    - StaticText "  timestamp: number;"
+   320→   320→                  - generic
+   321→   321→                    - StaticText "  importance: number; // 1-5"
+   322→   322→                  - StaticText "}"
+   323→   323→                  - LineBreak "\n"
+   324→   324→                  - generic
+   325→   325→                  - generic
+   326→   326→                    - StaticText "  task: string;"
+   327→   327→                  - generic
+   328→   328→                    - StaticText "  plan: string;"
+   329→   329→                  - generic
+   330→   330→                    - StaticText "  result: string;"
+   331→   331→                  - generic
+   332→   332→                    - StaticText "  success: boolean;"
+   333→   333→                  - generic
+   334→   334→                    - StaticText "  timestamp: number;"
+   335→   335→                  - StaticText "}"
+   336→   336→                  - LineBreak "\n"
+   337→   337→                  - generic
+   338→   338→                  - generic
+   339→   339→                    - StaticText "  timestamp: number;"
+   340→   340→                  - generic
+   341→   341→                    - StaticText "  success: boolean;"
+   342→   342→                  - generic
+   343→   343→                    - StaticText "  steps: number;"
+   344→   344→                  - generic
+   345→   345→                    - StaticText "  tokens: number;"
+   346→   346→                  - generic
+   347→   347→                    - StaticText "  time: number;"
+   348→   348→            - separator
+   349→   349→            - heading "2. Gestión de Contexto" [level=3, ref=e30]
+   350→   350→            - paragraph
+   351→   351→              - strong
+   352→   352→                - StaticText "Archivo: "
+   353→   353→                - code [ref=e88] clickable [cursor:pointer]
+   354→   354→            - generic
+   355→   355→              - StaticText "typescript"
+   356→   356→              - generic "Copy" [ref=e89] focusable [tabindex]
+   357→   357→                - button [ref=e162]
+   358→   358→              - generic
+   359→   359→                - textbox [ref=e163]: import { AgentMessage, LLMProvider } from './types';
+   360→   360→export async function compressContext(
+   361→   361→  messages: AgentMessage[], 
+   362→   362→  llmProvider: LLMProvider
+   363→   363→): Promise<AgentMessage[]> {
+   364→   364→
+   365→   365→  // 4. Generar resumen de mensajes importantes
+   366→   366→  if (importantMessages.length === 0) return [...recentMessages];
+   367→   367→  
+   368→   368→  try {
+   369→   369→    ${importantMessages.map(m => `${m.role}: ${m.content}`).join('\n')}`;
+   370→   370→    // NOTA: En un entorno real, esto llama a llmProvider.call()
+   371→   371→
+   372→   372→    return [
+   373→   373→      { role: 'system', content: simulatedSummary, timestamp: Date.now() },
+   374→   374→      ...recentMessages
+   375→   375→                  - generic
+   376→   376→                  - LineBreak "\n"
+   377→   377→                  - generic
+   378→   378→                  - generic
+   379→   379→                    - StaticText "  messages: AgentMessage[], "
+   380→   380→                  - generic
+   381→   381→                    - StaticText "  llmProvider: LLMProvider"
+   382→   382→                  - generic
+   383→   383→                    - StaticText "): Promise<AgentMessage[]> {"
+   384→   384→                  - generic
+   385→   385→                  - generic
+   386→   386→                  - StaticText "  "
+   387→   387→                  - generic
+   388→   388→                  - generic
+   389→   389→                  - StaticText "  "
+   390→   390→                  - generic
+   391→   391→                  - generic
+   392→   392→                  - generic
+   393→   393→                  - generic
+   394→   394→                  - generic
+   395→   395→                  - generic
+   396→   396→                  - generic
+   397→   397→                  - generic
+   398→   398→                  - StaticText "  });"
+   399→   399→                  - LineBreak "\n"
+   400→   400→                  - generic
+   401→   401→                  - generic
+   402→   402→                  - StaticText "  "
+   403→   403→                  - generic
+   404→   404→                  - generic
+   405→   405→                  - generic
+   406→   406→                    - StaticText "    ${importantMessages.map(m => `${m.role}: ${m.content}`).join('\\n')}`;"
+   407→   407→                  - StaticText "    "
+   408→   408→                  - generic
+   409→   409→                    - StaticText "    // NOTA: En un entorno real, esto llama a llmProvider.call()"
+   410→   410→                  - generic
+   411→   411→                  - generic
+   412→   412→                  - LineBreak "\n"
+   413→   413→                  - generic
+   414→   414→                  - generic
+   415→   415→                    - StaticText "      { role: 'system', content: simulatedSummary, timestamp: Date.now() },"
+   416→   416→            - paragraph
+   417→   417→              - strong
+   418→   418→                - StaticText "Archivo: "
+   419→   419→                - code [ref=e90] clickable [cursor:pointer]
+   420→   420→            - generic
+   421→   421→              - StaticText "typescript"
+   422→   422→              - generic "Copy" [ref=e91] focusable [tabindex]
+   423→   423→                - button [ref=e164]
+   424→   424→              - generic
+   425→   425→                - textbox [ref=e165]: import { AgentMessage } from './types';
+   426→   426→export class SlidingWindow {
+   427→   427→  private window: Map<string, AgentMessage> = new Map();
+   428→   428→  private maxSize: number = 100;
+   429→   429→
+   430→   430→  addMessage(message: AgentMessage, priority: number = 1): void {
+   431→   431→
+   432→   432→  getActiveWindow(): AgentMessage[] {
+   433→   433→
+   434→   434→  evictLowestPriority(): void {
+   435→   435→    let lowestId: string | null = null;
+   436→   436→
+   437→   437→    if (lowestId) {
+   438→   438→      this.window.delete(lowestId);
+   439→   439→    }
+   440→   440→                  - generic
+   441→   441→                  - LineBreak "\n"
+   442→   442→                  - generic
+   443→   443→                  - generic
+   444→   444→                    - StaticText "  private window: Map<string, AgentMessage> = new Map();"
+   445→   445→                  - generic
+   446→   446→                    - StaticText "  private maxSize: number = 100;"
+   447→   447→                  - LineBreak "\n"
+   448→   448→                  - generic
+   449→   449→                    - StaticText "  addMessage(message: AgentMessage, priority: number = 1): void {"
+   450→   450→                  - generic
+   451→   451→                  - generic
+   452→   452→                  - generic
+   453→   453→                  - generic
+   454→   454→                  - LineBreak "\n"
+   455→   455→                  - generic
+   456→   456→                  - generic
+   457→   457→                  - StaticText "    }"
+   458→   458→                  - StaticText "  }"
+   459→   459→                  - LineBreak "\n"
+   460→   460→                  - generic
+   461→   461→                    - StaticText "  getActiveWindow(): AgentMessage[] {"
+   462→   462→                  - generic
+   463→   463→                  - StaticText "  }"
+   464→   464→                  - LineBreak "\n"
+   465→   465→                  - generic
+   466→   466→                    - StaticText "  evictLowestPriority(): void {"
+   467→   467→                  - generic
+   468→   468→                    - StaticText "    let lowestId: string | null = null;"
+   469→   469→            - paragraph
+   470→   470→              - strong
+   471→   471→                - StaticText "Archivo: "
+   472→   472→                - code [ref=e92] clickable [cursor:pointer]
+   473→   473→            - generic
+   474→   474→              - StaticText "typescript"
+   475→   475→              - generic "Copy" [ref=e93] focusable [tabindex]
+   476→   476→                - button [ref=e166]
+   477→   477→              - generic
+   478→   478→                - textbox [ref=e167]: import { ToolDefinition } from './types';
+   479→   479→export class ToolPrioritizer {
+   480→   480→  private typeKeywords = {
+   481→   481→    'read': ['leer', 'ver', 'get', 'show', 'list', 'file', 'path'],
+   482→   482→    'write': ['escribir', 'crear', 'guardar', 'agregar', 'crear'],
+   483→   483→    'search': ['buscar', 'find', 'grep', 'search'],
+   484→   484→    'execute': ['ejecutar', 'run', 'comando', 'test', 'build'],
+   485→   485→    'image': ['imagen', 'diagrama', 'generar', 'gráfico']
+   486→   486→
+   487→   487→  analyzeTask(task: string): string {
+   488→   488→
+   489→   489→  prioritizeTools(tools: ToolDefinition[], task: string): ToolDefinition[] {
+   490→   490→
+   491→   491→        return { ...tool, score };
+   492→   492→                  - generic
+   493→   493→                  - LineBreak "\n"
+   494→   494→                  - generic
+   495→   495→                  - generic
+   496→   496→                  - generic
+   497→   497→                    - StaticText "    'read': ['leer', 'ver', 'get', 'show', 'list', 'file', 'path'],"
+   498→   498→                  - generic
+   499→   499→                    - StaticText "    'write': ['escribir', 'crear', 'guardar', 'agregar', 'crear'],"
+   500→   500→                  - generic
+
+[showing lines 1-500 of 2002; use offset=501 with limit to continue reading]

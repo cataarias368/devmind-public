@@ -1,0 +1,500 @@
+     1→Agent Loop with Tools and Prompts
+     2→Loading...
+     3→Y SI A CADA VES QUE SALE UN NUEVO MODELO LO COBRAN NOSOTROS QUE OBTENDRIAMOS DE ESAS VENTAS O COMO OBTENER GANANCIAS DE ELLOS 
+     4→GLM-4.7
+     5→Thought Process
+     6→Esta es la pregunta del millón. Aquí es donde separas a los \script kiddies\ de los \negociadores de tecnología\.
+     7→La respuesta corta es: 
+     8→No cobramos por el modelo en sí, cobramos por la \inteligencia de enrutamiento\ y la \conveniencia\.
+     9→Si el usuario trae su propia API Key (BYOK - Bring Your Own Key) en la versión Self-Hosted, 
+    10→tú no recibes nada de OpenAI/Anthropic
+    11→. El usuario le paga a ellos directamente. Tu negocio ahí está en la 
+    12→Licencia Enterprise
+    13→ o en la 
+    14→Solución Cloud
+    15→.
+    16→Aquí tienes exactamente cómo monetizar el sistema de \Auto-Discovery\ sin ser intrusivos:
+    17→En la versión SaaS (DevMind Cloud), tú eres el intermediario. Aquí es donde haces dinero real con los nuevos modelos.
+    18→El Truco del Arbitraje de Modelos:
+    19→list
+    20→• 
+    21→Tú tienes GLM-4 y DeepSeek (Baratos).
+    22→• 
+    23→El usuario quiere GPT-4o (Caro).
+    24→La Estrategia de Cobro:
+    25→\nCuando el sistema detecta que la tarea requiere GPT-4o (según tu 
+    26→ModelEvaluator
+    27→), el sistema ejecuta esto:
+    28→list
+    29→1. 
+    30→\Esta tarea requiere GPT-4o. Costo: 5 Créditos.\
+    31→2. 
+    32→El usuario paga.
+    33→3. 
+    34→Tú cobras al usuario el equivalente a $0.10 por \tarea compleja\.
+    35→4. 
+    36→Tú pagas a OpenAI $0.05.
+    37→5. 
+    38→Tu ganancia neta:
+    39→ Margen del 100% por el uso de tu inteligencia de enrutamiento.
+    40→¿Por qué pagan?
+    41→\nPorque el usuario no sabe qué modelo usar ni cómo configurarlo. Tú eres el experto. Ellos pagan por tu 
+    42→eficiencia
+    43→, no solo por el token.
+    44→Aquí es donde tu sistema de evaluación (
+    45→ModelEvaluator
+    46→) se vuelve un producto en sí mismo.
+    47→Imagina que sale \Claude-4\. Tú lo escaneas, lo pruebas, y generas un reporte:
+    48→list
+    49→• 
+    50→\Claude-4 mejora un 15% en razonamiento pero es 40% más lento que GPT-4o.\
+    51→• 
+    52→\Prompt recomendado para Claude-4: 'Sé conciso, usa formato JSON.' \
+    53→El Producto:
+    54→\nVendes 
+    55→\System Prompts Optimizados por DevMind\
+    56→.
+    57→list
+    58→• 
+    59→Cómo:
+    60→ Empresas como Jira o Salesforce usan LLMs internamente. No saben cómo \extraerle el jugo\ al modelo nuevo.
+    61→• 
+    62→La Venta:
+    63→ \Suscríbete a DevMind Enterprise para recibir los 
+    64→'Golden Prompts'
+    65→ actualizados automáticamente para cada nuevo modelo que sale.\
+    66→• 
+    67→Precio:
+    68→ $99/mes + Ahorro de miles de dólares en tokens malgastados.
+    69→Las grandes empresas odian actualizar software.
+    70→list
+    71→• 
+    72→Problema:
+    73→ \Instalamos DevMind v1.0. Salieron GPT-5 y Gemini 2.0. Tenemos que contratar a un desarrollador para agregar los adaptadores.\
+    74→• 
+    75→Solución:
+    76→Contrato de Actualización Continua.
+    77→Estructura del Contrato:
+    78→list
+    79→• 
+    80→Precio:
+    81→ $5,000 / año + Soporte.
+    82→• 
+    83→Lo que recibe la empresa:
+    84→list
+    85→Valor:
+    86→ Tranquilidad. Saben que su infraestructura de IA nunca quedará obsoleta.
+    87→En el Dashboard y la Extensión de VS Code, usa el descubrimiento de modelos como herramienta de marketing:
+    88→list
+    89→• 
+    90→Notificación:
+    91→\🎉 DevMind ha detectado un nuevo modelo: 
+    92→. 40% más rápido para tareas de matemáticas.\
+    93→• 
+    94→Botón:
+    95→[Prueba GPT-5 Ahora]
+    96→• 
+    97→Acción:
+    98→list
+    99→: \Actualiza a Pro para usar modelos de última generación.\ (Funnel de conversión).
+   100→: \Este modelo usa 2x créditos. ¿Continuar?\ (Control de costos).
+   101→row
+   102→row
+   103→row
+   104→row
+   105→row
+   106→No cobres \por el modelo\. Cobra por 
+   107→.
+   108→list
+   109→Esa 
+   110→ son por las que las empresas pagan grandes sumas de dinero. 🚀
+   111→# 📋 PROMPT MAESTRO - TAREAS DE RENDIMIENTO PARA DEV MIND\n\nPerfecto. Te entrego un **prompt único y completo** para que el programador AI implemente **TODAS las tareas de rendimiento** que hemos identificado (15 tareas en total), organizadas por categorías.\n\n---\n\n```\nVas a implementar 15 tareas de rendimiento para el sistema DevMind Agent. Estas tareas son independientes de prompts y loops, y mejoran la eficiencia, memoria, paralelización y monitoreo del agente.\n\nEl sistema actual tiene: agent.ts, llm-provider.ts, index.ts, checkpoint.ts, memory.ts, safety.ts, y los módulos de imágenes, documentación, GitHub, etc.\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 1: TAREAS DE GESTIÓN DE CONTEXTO (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 1.1: COMPRESIÓN DE CONTEXTO\nArchivo: src/tasks/context-compression.ts\n\nRequisitos:\n- Identificar mensajes importantes (system, ✅, ERROR, CRITIQUE)\n- Resumir mensajes antiguos manteniendo: objetivo, decisiones, errores, estado\n- Mantener últimos 10 mensajes sin comprimir\n- Usar LLM para generar resúmenes\n- Devolver estructura: { role: 'system', content: '[RESUMEN] ...' }\n\nTAREA 1.2: VENTANA DESLIZANTE (Sliding Window)\nArchivo: src/tasks/sliding-window.ts\n\nRequisitos:\n- Mantener máximo 100 mensajes\n- Priorizar mensajes recientes y importantes\n- Método addMessage(message): añade con timestamp\n- Método getActiveWindow(): devuelve mensajes activos\n- Método evictLowestPriority(): elimina los menos relevantes\n- Cada mensaje tiene ID único y prioridad\n\nTAREA 1.3: PRIORIZACIÓN DE HERRAMIENTAS\nArchivo: src/tasks/tool-prioritization.ts\n\nRequisitos:\n- Analizar la tarea para determinar tipo (read/write/search/execute/general)\n- Asignar scores a cada herramienta según el tipo\n- Ordenar herramientas por score\n- Método prioritize(tools, task): devuelve herramientas ordenadas\n- Método analyzeTask(task): devuelve el tipo de tarea\n- Penalizar herramientas que no encajan con la tarea\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 2: TAREAS DE MEMORIA Y CACHÉ (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 2.1: CACHE SEMÁNTICO\nArchivo: src/tasks/semantic-cache.ts\n\nRequisitos:\n- Almacenar resultados por similitud semántica\n- Umbral de similitud: 0.85\n- Expiración: 1 hora\n- Método get(query): devuelve resultado cacheado o null\n- Método set(query, result): guarda en cache\n- Usar cosine similarity para comparar embeddings\n- Implementar embedding simple (hash o API)\n\nTAREA 2.2: MEMORIA DE CORTO PLAZO\nArchivo: src/tasks/short-term-memory.ts\n\nRequisitos:\n- Almacenar últimas 20 acciones con su resultado\n- Cada entrada: { action, result, timestamp, importance }\n- Importancia: 1-5 (asignada por el agente)\n- Si excede 20, eliminar los menos importantes\n- Método add(action, result, importance): añade entrada\n- Método getRecent(limit): devuelve últimas N acciones\n- Método getContext(): devuelve contexto formateado\n\nTAREA 2.3: MEMORIA EPISÓDICA\nArchivo: src/tasks/episodic-memory.ts\n\nRequisitos:\n- Almacenar episodios completos: { task, plan, result, success, timestamp }\n- Mantener últimos 100 episodios\n- Método add(task, plan, result, success): añade episodio\n- Método findSimilar(task): encuentra episodios similares\n- Similaridad por palabras clave (intersección/unión)\n- Devolver episodios similares formateados\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 3: TAREAS DE OPTIMIZACIÓN (3 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 3.1: ANTICIPACIÓN DE PASOS\nArchivo: src/tasks/step-anticipation.ts\n\nRequisitos:\n- Predecir próximos 3 pasos basado en estado actual y tarea\n- Método anticipateNextStep(currentState, task): devuelve array de predicciones\n- Método validatePrediction(prediction, actual): valida con similitud > 0.5\n- Usar LLM para generar predicciones\n- Almacenar predicciones para análisis posterior\n\nTAREA 3.2: PLANIFICACIÓN DINÁMICA\nArchivo: src/tasks/dynamic-planning.ts\n\nRequisitos:\n- Crear plan de 5-10 pasos atómicos\n- Si un paso falla, replanificar automáticamente\n- Método plan(task): genera plan inicial\n- Método adapt(stepResult): adapta plan según resultado\n- Método replan(): genera nuevo plan basado en errores\n- Mantener historial de planes y resultados\n\nTAREA 3.3: PROCESAMIENTO POR LOTES\nArchivo: src/tasks/batch-processing.ts\n\nRequisitos:\n- Agrupar operaciones similares en lotes\n- Tamaño máximo del lote: 10\n- Método add(operation, params): añade a lote\n- Método process(): ejecuta lote y devuelve resultados\n- Agrupar por tipo de operación\n- Ejecutar lote como una sola operación cuando sea posible\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 4: TAREAS DE MEJORA CONTINUA (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 4.1: AUTOEVALUACIÓN\nArchivo: src/tasks/self-evaluation.ts\n\nRequisitos:\n- Registrar métricas: steps, success, tokens, time\n- Método record(task, result): registra ejecución\n- Método evaluate(): devuelve promedio de steps, successRate, tokens, time\n- Método getPerformance(): 'excellent', 'good', 'needs-improvement'\n- successRate > 0.9 y steps < 10 = excellent\n- successRate > 0.7 y steps < 20 = good\n- Guardar métricas en .devmind/metrics.json\n\nTAREA 4.2: SUGERENCIA DE MEJORAS\nArchivo: src/tasks/improvement-suggestions.ts\n\nRequisitos:\n- Analizar resultados para generar sugerencias\n- Método suggest(currentResults): devuelve array de sugerencias\n- Verificar: tiempo de ejecución > 30s → sugerir batch processing\n- Verificar: successRate < 0.8 → sugerir Chain of Verification\n- Verificar: steps > 20 → sugerir Tree of Thoughts\n- Verificar: no usa memoria → sugerir guardar aprendizajes\n- Verificar: herramientas faltantes → sugerir uso\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 5: TAREAS DE PARALELIZACIÓN (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 5.1: EJECUCIÓN DE TAREAS INDEPENDIENTES\nArchivo: src/tasks/independent-execution.ts\n\nRequisitos:\n- Ejecutar tareas en paralelo cuando sean independientes\n- Método executeParallel(tasks, tools): ejecuta todas en paralelo\n- Cada tarea tiene contexto aislado (memoria separada)\n- Método createIsolatedTools(tools): clona herramientas sin estado compartido\n- Método executeWithIsolation(task, tools): ejecuta en aislamiento\n- Promise.all para ejecución paralela\n\nTAREA 5.2: PIPELINE PARALELO\nArchivo: src/tasks/parallel-pipeline.ts\n\nRequisitos:\n- Ejecutar etapas de un pipeline en paralelo\n- Método executePipeline(stages, input): ejecuta etapas secuencialmente\n- Cada etapa procesa datos en paralelo\n- Los datos se distribuyen entre workers\n- Si una etapa falla, capturar error sin detener todo\n- Devolver resultados de todas las etapas\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 6: TAREAS DE MONITOREO Y ALERTAS (2 tareas)\n═══════════════════════════════════════════════════════════════════════════════\n\nTAREA 6.1: HEALTH CHECK AUTOMÁTICO\nArchivo: src/tasks/health-check.ts\n\nRequisitos:\n- Verificar GLM_API_KEY configurada\n- Verificar espacio en disco > 10%\n- Verificar uso de memoria < 90%\n- Verificar herramientas disponibles\n- Método check(): devuelve { status, issues }\n- status: 'healthy', 'warning', 'critical'\n- Ejecutar automáticamente cada hora\n- Guardar historial de health checks\n\nTAREA 6.2: ALERTAS AUTOMÁTICAS\nArchivo: src/tasks/alerts.ts\n\nRequisitos:\n- Tres niveles: info, warning, critical\n- Método send(level, message): envía alerta\n- console.log para info, console.warn para warning, console.error para critical\n- Notificación a Slack si SLACK_WEBHOOK_URL está configurada\n- Para critical: enviar inmediatamente\n- Para warning: acumular y enviar cada 5 minutos\n- Guardar historial de alertas en .devmind/alerts.log\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 7: INTEGRACIÓN EN EL SISTEMA EXISTENTE\n═══════════════════════════════════════════════════════════════════════════════\n\nArchivo: src/tasks/index.ts (NUEVO)\n\nRequisitos:\n- Exportar todas las tareas\n- Inicializar todas las tareas al arrancar\n- Método startAllTasks(): inicia monitoreo y caché\n- Método stopAllTasks(): detiene tareas en background\n- Registrar tareas en el sistema\n\nModificar src/index.ts:\n- Importar e inicializar TaskManager\n- En el arranque: await taskManager.startAllTasks()\n- En el apagado: await taskManager.stopAllTasks()\n- Agregar comandos CLI: --health, --metrics, --suggest\n\nModificar src/agent.ts:\n- Usar compression de contexto antes de cada llamada LLM\n- Usar sliding window para mantener contexto\n- Usar tool prioritization antes de ejecutar herramientas\n- Usar semantic cache para resultados repetidos\n- Usar short-term memory para contexto local\n- Usar step anticipation para predecir próximos pasos\n- Usar dynamic planning para adaptarse a cambios\n- Usar batch processing para operaciones similares\n- Registrar métricas en self-evaluation\n\n═══════════════════════════════════════════════════════════════════════════════\nPARTE 8: COMANDOS Y PRUEBAS\n═══════════════════════════════════════════════════════════════════════════════\n\nComandos a implementar:\n\nnpx tsx src/index.ts --health        → Ejecutar health check\nnpx tsx src/index.ts --metrics       → Mostrar métricas de rendimiento\nnpx tsx src/index.ts --suggest       → Obtener sugerencias de mejora\nnpx tsx src/index.ts --clear-cache   → Limpiar cache semántico\nnpx tsx src/index.ts --status        → Estado completo del sistema\n\nPruebas a incluir en cada archivo:\n\n// Cada tarea debe tener su propio test\n// Ejemplo: context-compression.test.ts\nimport { ContextCompressor } from './context-compression';\n// Test: compresión de contexto largo\n// Test: resumen mantiene información clave\n// Test: no comprime mensajes recientes\n\n═══════════════════════════════════════════════════════════════════════════════\nREGLAS DE IMPLEMENTACIÓN\n═══════════════════════════════════════════════════════════════════════════════\n\n1. TODOS los archivos en TypeScript con ESM imports\n2. TODOS los métodos documentados con JSDoc\n3. TODOS los errores manejados con try/catch\n4. TODOS los logs con console.error para debugging\n5. NO usar dependencias externas (solo Node.js built-ins)\n6. Los directorios .devmind y .agent_checkpoints deben crearse automáticamente\n7. Las tareas deben ser independientes (no dependen entre sí)\n8. Cada tarea debe tener su propio archivo en src/tasks/\n9. El TaskManager debe ser el orquestador central\n\n═══════════════════════════════════════════════════════════════════════════════\nARCHIVOS A CREAR\n═══════════════════════════════════════════════════════════════════════════════\n\nsrc/tasks/\n├── index.ts                    ← TaskManager (orquestador)\n├── context-compression.ts\n├── sliding-window.ts\n├── tool-prioritization.ts\n├── semantic-cache.ts\n├── short-term-memory.ts\n├── episodic-memory.ts\n├── step-anticipation.ts\n├── dynamic-planning.ts\n├── batch-processing.ts\n├── self-evaluation.ts\n├── improvement-suggestions.ts\n├── independent-execution.ts\n├── parallel-pipeline.ts\n├── health-check.ts\n└── alerts.ts\n\nArchivos a modificar:\n- src/index.ts (agregar comandos y TaskManager)\n- src/agent.ts (integrar tareas en el loop)\n- src/llm-provider.ts (usar cache semántico)\n\n═══════════════════════════════════════════════════════════════════════════════\nENTREGABLE\n═══════════════════════════════════════════════════════════════════════════════\n\nGenerame:\n1. Los 16 archivos completos (15 tareas + TaskManager)\n2. Las modificaciones en src/index.ts y src/agent.ts\n3. Los comandos CLI implementados\n4. Los tests básicos para cada tarea\n5. Un archivo .devmind/tasks-config.json con la configuración predeterminada\n\nEl sistema debe ser funcional al copiar y pegar los archivos.\n```\n\n---\n\n## 📦 COMPLEMENTO: COMANDO PARA EJECUTAR\n\n```bash\n# Copiar este prompt completo y pegarlo en GLM 4.7\n# Luego, cuando el programador AI entregue los archivos:\n\n# 1. Crear la estructura\nmkdir -p src/tasks\n\n# 2. Copiar cada archivo en su lugar\n\n# 3. Probar el sistema\nnpx tsx src/index.ts --health\nnpx tsx src/index.ts --metrics\nnpx tsx src/index.ts --suggest\n\n# 4. Ver el estado completo\nnpx tsx src/index.ts --status\n\n# 5. Probar el agente con las mejoras\nnpx tsx src/index.ts \Refactoriza el módulo de autenticación\\n```\n\n---\n\n**Este prompt está listo para copiar y pegar en GLM 4.7. El programador AI generará todo el código necesario.** 🚀 
+   112→GLM-4.7
+   113→Thought Process
+   114→Aquí tienes la implementación completa de las 15 tareas de rendimiento, el orquestador (
+   115→) y la integración en el sistema principal.
+   116→typescript
+   117→export interface AgentMessage {
+   118→  role: string;
+   119→  content: string;
+   120→  timestamp: number;
+   121→  priority?: number;
+   122→export interface ToolDefinition {
+   123→  name: string;
+   124→  description: string;
+   125→  keywords: string[];
+   126→export interface MemoryEntry {
+   127→  action: string;
+   128→  result: string;
+   129→  timestamp: number;
+   130→  importance: number; // 1-5
+   131→export interface Episode {
+   132→  task: string;
+   133→  plan: string;
+   134→  result: string;
+   135→  success: boolean;
+   136→  timestamp: number;
+   137→export interface Metric {
+   138→  timestamp: number;
+   139→  success: boolean;
+   140→  steps: number;
+   141→  tokens: number;
+   142→  time: number;
+   143→// src/tasks/types.ts
+   144→  role: string;
+   145→  content: string;
+   146→  timestamp: number;
+   147→  priority?: number;
+   148→}
+   149→  name: string;
+   150→  description: string;
+   151→  keywords: string[];
+   152→}
+   153→  action: string;
+   154→  result: string;
+   155→  timestamp: number;
+   156→  importance: number; // 1-5
+   157→}
+   158→  task: string;
+   159→  plan: string;
+   160→  result: string;
+   161→  success: boolean;
+   162→  timestamp: number;
+   163→}
+   164→  timestamp: number;
+   165→  success: boolean;
+   166→  steps: number;
+   167→  tokens: number;
+   168→  time: number;
+   169→Archivo: 
+   170→typescript
+   171→export async function compressContext(
+   172→  messages: AgentMessage[], 
+   173→  llmProvider: LLMProvider
+   174→): Promise<AgentMessage[]> {
+   175→  // 4. Generar resumen de mensajes importantes
+   176→  if (importantMessages.length === 0) return [...recentMessages];
+   177→  try {
+   178→    ${importantMessages.map(m => `${m.role}: ${m.content}`).join('\n')}`;
+   179→    // NOTA: En un entorno real, esto llama a llmProvider.call()
+   180→    return [
+   181→      { role: 'system', content: simulatedSummary, timestamp: Date.now() },
+   182→      ...recentMessages
+   183→  messages: AgentMessage[], 
+   184→  llmProvider: LLMProvider
+   185→): Promise<AgentMessage[]> {
+   186→  });
+   187→    ${importantMessages.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
+   188→    // NOTA: En un entorno real, esto llama a llmProvider.call()
+   189→      { role: 'system', content: simulatedSummary, timestamp: Date.now() },
+   190→Archivo: 
+   191→typescript
+   192→export class SlidingWindow {
+   193→  private window: Map<string, AgentMessage> = new Map();
+   194→  private maxSize: number = 100;
+   195→  addMessage(message: AgentMessage, priority: number = 1): void {
+   196→  getActiveWindow(): AgentMessage[] {
+   197→  evictLowestPriority(): void {
+   198→    let lowestId: string | null = null;
+   199→    if (lowestId) {
+   200→      this.window.delete(lowestId);
+   201→    }
+   202→  private window: Map<string, AgentMessage> = new Map();
+   203→  private maxSize: number = 100;
+   204→  addMessage(message: AgentMessage, priority: number = 1): void {
+   205→    }
+   206→  }
+   207→  getActiveWindow(): AgentMessage[] {
+   208→  }
+   209→  evictLowestPriority(): void {
+   210→    let lowestId: string | null = null;
+   211→Archivo: 
+   212→typescript
+   213→export class ToolPrioritizer {
+   214→  private typeKeywords = {
+   215→    'read': ['leer', 'ver', 'get', 'show', 'list', 'file', 'path'],
+   216→    'write': ['escribir', 'crear', 'guardar', 'agregar', 'crear'],
+   217→    'search': ['buscar', 'find', 'grep', 'search'],
+   218→    'execute': ['ejecutar', 'run', 'comando', 'test', 'build'],
+   219→  analyzeTask(task: string): string {
+   220→  prioritizeTools(tools: ToolDefinition[], task: string): ToolDefinition[] {
+   221→        return { ...tool, score };
+   222→    'read': ['leer', 'ver', 'get', 'show', 'list', 'file', 'path'],
+   223→    'write': ['escribir', 'crear', 'guardar', 'agregar', 'crear'],
+   224→    'search': ['buscar', 'find', 'grep', 'search'],
+   225→    'execute': ['ejecutar', 'run', 'comando', 'test', 'build'],
+   226→  };
+   227→  analyzeTask(task: string): string {
+   228→  }
+   229→  prioritizeTools(tools: ToolDefinition[], task: string): ToolDefinition[] {
+   230→Archivo: 
+   231→typescript
+   232→function getEmbedding(text: string): number[] {
+   233→function cosineSimilarity(vecA: number[], vecB: number[]): number {
+   234→  return magA && magB ? dotProduct / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+   235→export class SemanticCache {
+   236→  private cache: Map<string, { content: string; timestamp: number; vector: number[] }> = new Map();
+   237→  async get(query: string): Promise<string | null> {
+   238→    const vector = getEmbedding(query);
+   239→    for (const [key, data] of this.cache) {
+   240→      const now = Date.now();
+   241→// Simulación simple de embedding (en prod, usar OpenAI Embeddings)
+   242→function getEmbedding(text: string): number[] {
+   243→  }
+   244→}
+   245→function cosineSimilarity(vecA: number[], vecB: number[]): number {
+   246→  }
+   247→  return magA && magB ? dotProduct / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+   248→}
+   249→  private cache: Map<string, { content: string; timestamp: number; vector: number[] }> = new Map();
+   250→  async get(query: string): Promise<string | null> {
+   251→Archivo: 
+   252→typescript
+   253→export class ShortTermMemory {
+   254→  private memories: MemoryEntry[] = [];
+   255→  add(action: string, result: string, importance: number): void {
+   256→    this.memories.push({
+   257→      timestamp: Date.now(),
+   258→  getRecent(limit: number): MemoryEntry[] {
+   259→  getContext(): string {
+   260→    return this.memories
+   261→      .map(m => `Acción previa: ${m.action} -> Resultado: ${m.result.slice(0, 50)}...`)
+   262→  private evictLeastImportant(): void {
+   263→}
+   264→  private memories: MemoryEntry[] = [];
+   265→  add(action: string, result: string, importance: number): void {
+   266→      timestamp: Date.now(),
+   267→    });
+   268→    }
+   269→  }
+   270→  getRecent(limit: number): MemoryEntry[] {
+   271→  }
+   272→  getContext(): string {
+   273→      .map(m => `Acción previa: ${m.action} -> Resultado: ${m.result.slice(0, 50)}...`)
+   274→  }
+   275→  private evictLeastImportant(): void {
+   276→Archivo: 
+   277→typescript
+   278→export class EpisodicMemory {
+   279→  private episodes: Episode[] = [];
+   280→  add(task: string, plan: string, result: string, success: boolean): void {
+   281→    this.episodes.push({
+   282→      timestamp: Date.now()
+   283→  findSimilar(task: string): Episode[] {
+   284→    const matches: Episode[] = [];
+   285→      if (similarity > 0.3) { // Umbral bajo para similar
+   286→        matches.push(ep);
+   287→  private episodes: Episode[] = [];
+   288→  add(task: string, plan: string, result: string, success: boolean): void {
+   289→      timestamp: Date.now()
+   290→    });
+   291→    }
+   292→  }
+   293→  findSimilar(task: string): Episode[] {
+   294→    const matches: Episode[] = [];
+   295→Archivo: 
+   296→typescript
+   297→export class StepAnticipator {
+   298→  async anticipateNextStep(currentState: string, task: string, llmProvider: LLMProvider): Promise<string[]> {
+   299→    try {
+   300→      // Simulación: palabras clave del prompt
+   301→      const predictions: string[] = [];
+   302→}
+   303→  async anticipateNextStep(currentState: string, task: string, llmProvider: LLMProvider): Promise<string[]> {
+   304→      // Simulación: palabras clave del prompt
+   305→      const predictions: string[] = [];
+   306→Archivo: 
+   307→typescript
+   308→export class DynamicPlanning {
+   309→  private plan: string[] = [];
+   310→  private history: { step: string; result: TaskResult }[] = [];
+   311→  createPlan(task: string): string[] {
+   312→  adapt(step: string, result: TaskResult): string[] {
+   313→    if (!result.success) {
+   314→      // Replanificar si falla
+   315→      this.plan = [
+   316→        `Intentar enfoque alternativo para: ${step}`,
+   317→  replan(): string[] {
+   318→    const lastStep = this.history[this.history.length - 1]?.step;
+   319→    return [
+   320→      Analizar error crítico,
+   321→  private plan: string[] = [];
+   322→  private history: { step: string; result: TaskResult }[] = [];
+   323→  createPlan(task: string): string[] {
+   324→    ];
+   325→  }
+   326→  adapt(step: string, result: TaskResult): string[] {
+   327→        `Intentar enfoque alternativo para: ${step}`,
+   328→      ];
+   329→    }
+   330→  }
+   331→  replan(): string[] {
+   332→**Archivo: 
+   333→typescript
+   334→  private batches: Map<string, any[]> = new Map();
+   335→  add(operation: string, params: any): void {
+   336→  async process(operation: string): Promise<any[]> {
+   337→    return batch.map(params => ({ status: 'processed', params }));
+   338→}
+   339→  private batches: Map<string, any[]> = new Map();
+   340→  add(operation: string, params: any): void {
+   341→    }
+   342→    }
+   343→  }
+   344→  async process(operation: string): Promise<any[]> {
+   345→    return batch.map(params => ({ status: 'processed', params }));
+   346→Archivo: src/tasks/self-evaluation.ts
+   347→typescript
+   348→export class SelfEvaluator {
+   349→  private metrics: Metric[] = [];
+   350→  async record(task: string, result: TaskResult): Promise<void> {
+   351→    const metric: Metric = {
+   352→      timestamp: Date.now(),
+   353→      success: result.success,
+   354→      steps: result.steps,
+   355→      tokens: 0, // Se obtiene del LLM response real
+   356→      time: 0      // Se obtiene del medidor de tiempo real
+   357→  async evaluate(): Promise<{ score: string; details: any }> {
+   358→    if (this.metrics.length === 0) return { score: 'no-data', details: {} };
+   359→    return { score, details: { successRate, avgSteps: this.getAvgSteps() } };
+   360→  private getAvgSteps(): number {
+   361→  private metrics: Metric[] = [];
+   362→  async record(task: string, result: TaskResult): Promise<void> {
+   363→    const metric: Metric = {
+   364→      timestamp: Date.now(),
+   365→      success: result.success,
+   366→      steps: result.steps,
+   367→      tokens: 0, // Se obtiene del LLM response real
+   368→      time: 0      // Se obtiene del medidor de tiempo real
+   369→    };
+   370→  }
+   371→  async evaluate(): Promise<{ score: string; details: any }> {
+   372→    if (this.metrics.length === 0) return { score: 'no-data', details: {} };
+   373→    return { score, details: { successRate, avgSteps: this.getAvgSteps() } };
+   374→  }
+   375→  private getAvgSteps(): number {
+   376→Archivo: src/tasks/improvement-suggestions.ts
+   377→typescript
+   378→export class ImprovementSuggestions {
+   379→  constructor(private evaluator: SelfEvaluator) {}
+   380→  async suggest(evaluator: SelfEvaluator): Promise<string[]> {
+   381→    const suggestions: string[] = [];
+   382→}
+   383→  constructor(private evaluator: SelfEvaluator) {}
+   384→  async suggest(evaluator: SelfEvaluator): Promise<string[]> {
+   385→    const suggestions: string[] = [];
+   386→**Archivo: src/tasks/independent-execution.ts`
+   387→typescript
+   388→export class IndependentExecution {
+   389→  createIsolatedTools(tools: any[]): any[] {
+   390→  async executeParallel(tasks: any[], tools: any[], llmProvider: LLMProvider): Promise<any[]> {
+   391→  async executeWithIsolation(task: string, tools: any[], llmProvider: LLMProvider): Promise<any> {
+   392→    console.log(`[Isolated] Ejecutando: ${task}`);
+   393→    return { status: 'done', task };
+   394→}
+   395→  createIsolatedTools(tools: any[]): any[] {
+   396→  }
+   397→  async executeParallel(tasks: any[], tools: any[], llmProvider: LLMProvider): Promise<any[]> {
+   398→    );
+   399→  }
+   400→  async executeWithIsolation(task: string, tools: any[], llmProvider: LLMProvider): Promise<any> {
+   401→    console.log(`[Isolated] Ejecutando: ${task}`);
+   402→    return { status: 'done', task };
+   403→**Archivo: src/tasks/parallel-pipeline.ts`
+   404→typescript
+   405→export class ParallelPipeline {
+   406→  async executePipeline(stages: ((data: any) => Promise<any>)[], input: any, llmProvider: LLMProvider): Promise<any[]> {
+   407→    const results: any[] = [];
+   408→}
+   409→  async executePipeline(stages: ((data: any) => Promise<any>)[], input: any, llmProvider: LLMProvider): Promise<any[]> {
+   410→    const results: any[] = [];
+   411→Archivo: src/tasks/health-check.ts
+   412→typescript
+   413→export class HealthCheck {
+   414→  check(): { status: 'healthy' | 'warning' | 'critical'; issues: string[] } {
+   415→    const issues: string[] = [];
+   416→    if (issues.length > 0 && issues.some(i => i.includes(crític))) {
+   417→      return { status: 'critical', issues };
+   418→    }
+   419→    if (issues.length > 0) {
+   420→      return { status: 'warning', issues };
+   421→    return { status: 'healthy', issues: [] };
+   422→}
+   423→  check(): { status: 'healthy' | 'warning' | 'critical'; issues: string[] } {
+   424→    const issues: string[] = [];
+   425→      return { status: 'critical', issues };
+   426→    }
+   427→      return { status: 'warning', issues };
+   428→    }
+   429→    return { status: 'healthy', issues: [] };
+   430→Archivo: src/tasks/alerts.ts
+   431→text
+   432→export class Alerts {
+   433→  private alerts: { level: string; message: string; timestamp: number; }[] = [];
+   434→  async send(level: 'info' | 'warning' | 'critical', message: string): Promise<void> {
+   435→    const alert = { level, message, timestamp: Date.now() };
+   436→    // Slack Webhook
+   437→    if (level === 'critical' && process.env.SLACK_WEBHOOK_URL) {
+   438→      await fetch(process.env.SLACK_WEBHOOK_URL, {
+   439→        method: 'POST',
+   440→        headers: { 'Content-Type': 'application/json' },
+   441→        body: JSON.stringify({ text: `🚨 DevMind Alert (${level.toUpperCase()}): ${message}` })
+   442→  private async save(): Promise<void> {
+   443→    await fs.mkdir(dir, { recursive: true });
+   444→}
+   445→  private alerts: { level: string; message: string; timestamp: number; }[] = [];
+   446→  async send(level: 'info' | 'warning' | 'critical', message: string): Promise<void> {
+   447→    const alert = { level, message, timestamp: Date.now() };
+   448→        method: 'POST',
+   449→        headers: { 'Content-Type': 'application/json' },
+   450→        body: JSON.stringify({ text: `🚨 DevMind Alert (${level.toUpperCase()}): ${message}` })
+   451→  private async save(): Promise<void> {
+   452→    await fs.mkdir(dir, { recursive: true });
+   453→Archivo: src/tasks/index.ts
+   454→typescript
+   455→  async startAllTasks(): Promise<void> {
+   456→    console.log('🚀 Iniciando tareas de rendimiento...');
+   457→  async startAllTasks(): Promise<void> {
+   458→9. Integración en 
+   459→typescript
+   460→export async function agentLoop(userObjective: string, config: AgentConfig): Promise<any> {
+   461→  const messages: any[] = [
+   462→    { role: 'system', content: SYSTEM_PROMPT.replace('{WORKSPACE_ROOT}', workspaceRoot) }
+   463→  messages.push({ role: 'user', content: userObjective });
+   464→  let steps = 0;
+   465→  // Bucle principal
+   466→  while (steps < maxSteps) {
+   467→    // --- TAREA 1.1: COMPRESIÓN DE CONTEXTO ---
+   468→    // --- TAREA 1.2: VENTANA DESLIZANTE ---
+   469→    const activeMessages = compressedContext; // (Simplificado: usar el array comprimido)
+   470→    // --- TAREA 2.1: CACHE SEMÁNTICO ---
+   471→    const cacheKey = JSON.stringify({ role: 'user', content: activeMessages[activeMessages.length - 1] });
+   472→    const cachedResult = await taskManager.getCache().get(cacheKey);
+   473→    if (cachedResult) {
+   474→        return { success: true, summary: `Resultado cacheado: ${cachedResult}`, steps };
+   475→// src/agent.ts
+   476→// ... imports ...
+   477→// Importar TaskManager
+   478→export async function agentLoop(userObjective: string, config: AgentConfig): Promise<any> {
+   479→  const messages: any[] = [
+   480→    { role: 'system', content: SYSTEM_PROMPT.replace('{WORKSPACE_ROOT}', workspaceRoot) }
+   481→  ];
+   482→  messages.push({ role: 'user', content: userObjective });
+   483→    // --- TAREA 1.1: COMPRESIÓN DE CONTEXTO ---
+   484→    // --- TAREA 1.2: VENTANA DESLIZANTE ---
+   485→    const activeMessages = compressedContext; // (Simplificado: usar el array comprimido)
+   486→    // --- TAREA 2.1: CACHE SEMÁNTICO ---
+   487→    const cacheKey = JSON.stringify({ role: 'user', content: activeMessages[activeMessages.length - 1] });
+   488→        return { success: true, summary: `Resultado cacheado: ${cachedResult}`, steps };
+   489→10. Integración en 
+   490→typescript
+   491→}
+   492→list
+   493→: Tipos compartidos.
+   494→: Compresión inteligente del historial.
+   495→: Ventana dinámica de mensajes.
+   496→: Selección óptima de herramientas.
+   497→: Caché semántico para respuestas.
+   498→: Memoria a corto plazo.
+   499→: Memoria a largo plazo (episodios).
+   500→**src/tasks/step-anticipation.ts`: Predicción de pasos.
