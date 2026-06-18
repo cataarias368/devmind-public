@@ -5,6 +5,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, resolve } from 'path';
 import type { AgentCore, ToolDefinition } from './types.js';
+import { isSafePath, isWithinWorkspace } from './types.js';
 
 // --- Permisos ---
 
@@ -75,9 +76,20 @@ export class PluginManager {
   private core: AgentCore;
   private manifestPath: string;
 
-  constructor(core: AgentCore) {
+  // Allowlist de plugins permitidos (rutas absolutas)
+  private pluginAllowlist: Set<string> = new Set();
+  // Si es true, solo se cargan plugins del allowlist
+  private strictMode: boolean;
+
+  constructor(core: AgentCore, options?: { strictMode?: boolean; allowedPlugins?: string[] }) {
     this.core = core;
     this.manifestPath = join(core.workspaceRoot, '.devmind', 'plugins', 'manifest.json');
+    this.strictMode = options?.strictMode ?? true;
+    if (options?.allowedPlugins) {
+      for (const p of options.allowedPlugins) {
+        this.pluginAllowlist.add(resolve(p));
+      }
+    }
   }
 
   // ============================================================
@@ -116,15 +128,23 @@ export class PluginManager {
 
   /**
    * Carga un plugin desde un archivo.
+   * En modo estricto (default), solo carga plugins del allowlist.
    */
   async loadPluginFromFile(filePath: string): Promise<void> {
     const fullPath = resolve(filePath);
+
+    // Verificar allowlist en modo estricto
+    if (this.strictMode && this.pluginAllowlist.size > 0 && !this.pluginAllowlist.has(fullPath)) {
+      throw new Error(`Plugin "${filePath}" no está en la allowlist. Agregalo a PLUGIN_ALLOWED_PATHS o desactivá strictMode.`);
+    }
+
     try {
       const module = await import(fullPath);
       const plugin: Plugin = module.default || module;
       if (!plugin.name || !plugin.version) {
         throw new Error('El plugin debe exportar { name, version }');
       }
+      console.log(`[Plugin] ⚠️ Cargando plugin desde ${filePath} - verificá que sea de fuente confiable`);
       await this.load(plugin);
     } catch (err) {
       console.error(`[Plugin] ❌ Error cargando desde ${filePath}:`, err);
@@ -362,8 +382,16 @@ export const ExamplePlugin: Plugin = {
         },
         required: ['file_path']
       },
-      handler: async (args, _core, _permissions) => {
-        const content = await readFile(args.file_path as string, 'utf-8');
+      handler: async (args, core, _permissions) => {
+        const filePath = args.file_path as string;
+        if (!isSafePath(filePath)) {
+          return 'Error: Ruta no permitida por seguridad';
+        }
+        const fullPath = resolve(core.workspaceRoot, filePath);
+        if (!isWithinWorkspace(fullPath, core.workspaceRoot)) {
+          return 'Error: Ruta fuera del workspace';
+        }
+        const content = await readFile(fullPath, 'utf-8');
         return `Resumen del archivo (primeras 200 caracteres):\n${content.slice(0, 200)}...`;
       }
     }

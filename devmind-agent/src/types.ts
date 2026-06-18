@@ -2,6 +2,7 @@
 // src/types.ts - Interfaces y Tipos Compartidos de DevMind
 // ============================================================
 
+import { resolve } from 'path';
 import type { GLM47Provider } from './llm-provider.js';
 import type { CogViewProvider } from './image-provider.js';
 import type { CheckpointManager } from './checkpoint.js';
@@ -208,10 +209,45 @@ export interface DocOptions {
 
 /**
  * Valida que una ruta de archivo no contenga caracteres peligrosos
- * para prevenir command injection en execSync/spawnSync.
+ * para prevenir command injection y path traversal.
+ *
+ * Bloquea:
+ *  - Secuencias de path traversal (..)
+ *  - Rutas absolutas (que comienzan con /)
+ *  - Caracteres no permitidos (null bytes, etc.)
  */
 export function isSafePath(input: string): boolean {
-  return /^[a-zA-Z0-9/._-]+$/.test(input);
+  // Bloquear path traversal
+  if (input.includes('..')) return false;
+  // Bloquear rutas absolutas
+  if (input.startsWith('/')) return false;
+  // Bloquear null bytes
+  if (input.includes('\0')) return false;
+  // Solo permitir caracteres seguros
+  if (!/^[a-zA-Z0-9/._-]+$/.test(input)) return false;
+  return true;
+}
+
+/**
+ * Verifica que una ruta resuelta esté dentro del workspace.
+ * Segunda capa de defensa contra path traversal.
+ */
+export function isWithinWorkspace(resolvedPath: string, workspaceRoot: string): boolean {
+  const normalizedWorkspace = resolve(workspaceRoot);
+  const normalizedPath = resolve(resolvedPath);
+  return normalizedPath.startsWith(normalizedWorkspace + '/') || normalizedPath === normalizedWorkspace;
+}
+
+/**
+ * Escapa caracteres HTML para prevenir XSS.
+ */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 /**

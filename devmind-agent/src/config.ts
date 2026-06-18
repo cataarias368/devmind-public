@@ -17,6 +17,14 @@ const ConfigSchema = z.object({
   // --- Obligatorios ---
   GLM_API_KEY: z.string().min(1, 'GLM_API_KEY es obligatoria. Obtenla en https://open.bigmodel.cn'),
 
+  // --- Autenticación separada ---
+  // API_AUTH_KEY se usa para autenticar Dashboard y REST API.
+  // Si no se configura, se usa GLM_API_KEY como fallback (no recomendado para producción).
+  API_AUTH_KEY: z.string().min(1).optional(),
+
+  // --- CORS ---
+  ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001'),
+
   // --- General con defaults ---
   WORKSPACE_ROOT: z.string().default(resolve(process.cwd(), 'workspace')),
   AGENT_DRY_RUN: z
@@ -42,6 +50,9 @@ const ConfigSchema = z.object({
 
   // --- Telegram (Opcional) ---
   TELEGRAM_TOKEN: z.string().optional(),
+
+  // --- Slack Webhook (Opcional) ---
+  SLACK_WEBHOOK_URL: z.string().url().optional(),
 });
 
 export type DevMindConfig = z.infer<typeof ConfigSchema>;

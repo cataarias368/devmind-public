@@ -188,7 +188,8 @@ async function main(): Promise<void> {
     const dashboard = new DashboardServer({
       port: config.DASHBOARD_PORT,
       agentCore,
-      apiKey: config.GLM_API_KEY,
+      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
+      allowedOrigins: config.ALLOWED_ORIGINS.split(','),
     });
     await dashboard.start();
     console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
@@ -207,7 +208,8 @@ async function main(): Promise<void> {
     const server = new RestAPIServer({
       port: config.API_PORT,
       agentCore,
-      apiKey: config.GLM_API_KEY,
+      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
+      allowedOrigins: config.ALLOWED_ORIGINS.split(','),
     });
     await server.start();
     console.log('Presioná Ctrl+C para detener.');

@@ -5,6 +5,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { AdBanner } from './tasks/types.js';
+import { escapeHtml } from './types.js';
 
 interface AdManagerConfig {
   showAds: boolean;
@@ -154,28 +155,33 @@ export class AdvertisingManager {
     if (ads.length === 0) return '';
 
     return ads.map(ad => {
+      const safeTitle = escapeHtml(ad.title);
+      const safeDesc = escapeHtml(ad.description);
+      const safeCta = escapeHtml(ad.ctaText);
+      const safeUrl = escapeHtml(ad.linkUrl);
+
       switch (ad.type) {
         case 'banner':
-          return `<div class="ad-banner" id="ad-${ad.id}">
+          return `<div class="ad-banner" id="ad-${escapeHtml(ad.id)}">
             <div class="ad-content">
-              <strong>${ad.title}</strong>
-              <p>${ad.description}</p>
-              <a href="${ad.linkUrl}" target="_blank" class="ad-cta" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${ad.id}'})})">${ad.ctaText}</a>
+              <strong>${safeTitle}</strong>
+              <p>${safeDesc}</p>
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="ad-cta" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${escapeHtml(ad.id)}'})})">${safeCta}</a>
             </div>
             <button class="ad-close" onclick="this.parentElement.remove()">✕</button>
           </div>`;
 
         case 'sidebar':
-          return `<div class="ad-sidebar" id="ad-${ad.id}">
-            <strong>${ad.title}</strong>
-            <p>${ad.description}</p>
-            <a href="${ad.linkUrl}" target="_blank" class="ad-cta" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${ad.id}'})})">${ad.ctaText}</a>
+          return `<div class="ad-sidebar" id="ad-${escapeHtml(ad.id)}">
+            <strong>${safeTitle}</strong>
+            <p>${safeDesc}</p>
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="ad-cta" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${escapeHtml(ad.id)}'})})">${safeCta}</a>
           </div>`;
 
         case 'footer':
-          return `<div class="ad-footer" id="ad-${ad.id}">
-            <span class="ad-footer-desc">${ad.description}</span>
-            <a href="${ad.linkUrl}" target="_blank" class="ad-footer-link" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${ad.id}'})})">${ad.ctaText}</a>
+          return `<div class="ad-footer" id="ad-${escapeHtml(ad.id)}">
+            <span class="ad-footer-desc">${safeDesc}</span>
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="ad-footer-link" onclick="fetch('/api/ad/click',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adId:'${escapeHtml(ad.id)}'})})">${safeCta}</a>
           </div>`;
 
         default:

@@ -66,7 +66,7 @@ export class GitHubIntegration {
     );
 
     if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status} ${await response.text()}`);
+      throw new Error(`GitHub API error: ${response.status}`);
     }
 
     const issues = (await response.json()) as GitHubIssue[];
@@ -88,7 +88,7 @@ export class GitHubIntegration {
     });
 
     if (!response.ok) {
-      throw new Error(`Error creando issue: ${response.status} ${await response.text()}`);
+      throw new Error(`Error creando issue: ${response.status}`);
     }
 
     return (await response.json()) as GitHubIssue;
@@ -121,7 +121,7 @@ export class GitHubIntegration {
     );
 
     if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status} ${await response.text()}`);
+      throw new Error(`GitHub API error: ${response.status}`);
     }
 
     return (await response.json()) as GitHubPR[];
@@ -138,7 +138,7 @@ export class GitHubIntegration {
     });
 
     if (!response.ok) {
-      throw new Error(`Error creando PR: ${response.status} ${await response.text()}`);
+      throw new Error(`Error creando PR: ${response.status}`);
     }
 
     return (await response.json()) as GitHubPR;
@@ -157,7 +157,7 @@ export class GitHubIntegration {
     );
 
     if (!response.ok) {
-      throw new Error(`Error en búsqueda: ${response.status} ${await response.text()}`);
+      throw new Error(`Error en búsqueda: ${response.status}`);
     }
 
     const data = (await response.json()) as {

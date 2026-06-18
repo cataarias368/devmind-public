@@ -97,17 +97,15 @@ interface BotPlatform {
 // --- Slack Platform ---
 
 class SlackPlatform implements BotPlatform {
-  private readonly config: { token: string; signingSecret: string };
 
-  constructor(config: { token: string; signingSecret: string }) {
-    this.config = config;
+  constructor(_config: { token: string; signingSecret: string }) {
+    // Config reservado para producción con @slack/bolt
   }
 
   async start(_onMessage: (msg: BotMessage) => Promise<string>): Promise<void> {
     // En producción, usar @slack/bolt para manejar eventos
     // Aquí implementamos un stub funcional
     console.log('🔗 Slack bot conectado (modo stub - instalá @slack/bolt para producción)');
-    console.log('   Token configurado:', this.config.token.slice(0, 10) + '...');
   }
 
   async stop(): Promise<void> {
@@ -118,16 +116,14 @@ class SlackPlatform implements BotPlatform {
 // --- Discord Platform ---
 
 class DiscordPlatform implements BotPlatform {
-  private readonly config: { token: string; clientId: string };
 
-  constructor(config: { token: string; clientId: string }) {
-    this.config = config;
+  constructor(_config: { token: string; clientId: string }) {
+    // Config reservado para producción con discord.js
   }
 
   async start(_onMessage: (msg: BotMessage) => Promise<string>): Promise<void> {
     // En producción, usar discord.js
     console.log('🎮 Discord bot conectado (modo stub - instalá discord.js para producción)');
-    console.log('   Token configurado:', this.config.token.slice(0, 10) + '...');
   }
 
   async stop(): Promise<void> {

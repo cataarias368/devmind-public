@@ -130,6 +130,20 @@ export class Alerts {
       const webhookUrl = process.env.SLACK_WEBHOOK_URL;
       if (!webhookUrl) return;
 
+      // SSRF protection: validar que el dominio esté en la allowlist
+      const allowedDomains = ['hooks.slack.com', 'discord.com', 'discordapp.com'];
+      let url: URL;
+      try {
+        url = new URL(webhookUrl);
+      } catch {
+        console.warn('[Alerts] SLACK_WEBHOOK_URL inválida');
+        return;
+      }
+      if (!allowedDomains.some(d => url.hostname.endsWith(d))) {
+        console.warn(`[Alerts] Dominio de webhook no permitido: ${url.hostname}`);
+        return;
+      }
+
       const emoji = alert.level === 'critical' ? '🚨' : alert.level === 'warning' ? '⚠️' : 'ℹ️';
       await fetch(webhookUrl, {
         method: 'POST',

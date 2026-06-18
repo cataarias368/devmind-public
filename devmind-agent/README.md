@@ -1,7 +1,7 @@
 # 🧠 DevMind Agent
 
 <p align="center">
-  <img src="https://devmind.ai/logo.png" alt="DevMind Logo" width="200"/>
+  <img src="./logo.png" alt="DevMind Logo" width="200"/>
 </p>
 
 <h3 align="center">Autonomous Software Engineering Suite</h3>

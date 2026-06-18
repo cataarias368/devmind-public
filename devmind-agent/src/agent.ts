@@ -10,7 +10,7 @@ import type { CogViewProvider } from './image-provider.js';
 import type { CheckpointManager } from './checkpoint.js';
 import type { MemoryStore } from './memory.js';
 import type { AgentState, LLMMessage, LLMToolCall, ToolDefinition, ToolResult } from './types.js';
-import { isSafePath, serializeError } from './types.js';
+import { isSafePath, isWithinWorkspace, serializeError } from './types.js';
 
 interface AgentConfig {
   llmProvider: GLM47Provider;
@@ -293,6 +293,9 @@ export class Agent {
 
     try {
       const fullPath = resolve(this.config.workspaceRoot, relativePath);
+      if (!isWithinWorkspace(fullPath, this.config.workspaceRoot)) {
+        return { success: false, output: '', error: 'Ruta fuera del workspace' };
+      }
       const content = await readFile(fullPath, 'utf-8');
       this.state.files.push(relativePath);
       return { success: true, output: content.slice(0, 10000) }; // Limitar output
@@ -308,6 +311,9 @@ export class Agent {
 
     try {
       const fullPath = resolve(this.config.workspaceRoot, relativePath);
+      if (!isWithinWorkspace(fullPath, this.config.workspaceRoot)) {
+        return { success: false, output: '', error: 'Ruta fuera del workspace' };
+      }
       await mkdir(resolve(fullPath, '..'), { recursive: true });
       await writeFile(fullPath, content, 'utf-8');
       this.filesCreated.push(relativePath);
@@ -326,6 +332,9 @@ export class Agent {
 
     try {
       const fullPath = resolve(this.config.workspaceRoot, dirPath);
+      if (!isWithinWorkspace(fullPath, this.config.workspaceRoot)) {
+        return { success: false, output: '', error: 'Ruta fuera del workspace' };
+      }
       const entries = await readdir(fullPath, { withFileTypes: true });
       const listing = entries.map(e => `${e.isDirectory() ? '📁' : '📄'} ${e.name}`);
       return { success: true, output: listing.join('\n') || '(directorio vacío)' };
@@ -342,6 +351,9 @@ export class Agent {
 
     try {
       const fullPath = resolve(this.config.workspaceRoot, dir);
+      if (!isWithinWorkspace(fullPath, this.config.workspaceRoot)) {
+        return { success: false, output: '', error: 'Ruta fuera del workspace' };
+      }
       const result = spawnSync('rg', [pattern, fullPath, '--max-count', '20', '--no-heading'], {
         encoding: 'utf-8',
         timeout: 15000,
@@ -356,8 +368,8 @@ export class Agent {
   }
 
   private async toolRunCommand(command: string, args?: string): Promise<ToolResult> {
-    // Lista blanca de comandos seguros
-    const SAFE_COMMANDS = ['npm', 'npx', 'node', 'git', 'ls', 'cat', 'echo', 'mkdir', 'cp', 'mv', 'tsc', 'eslint'];
+    // Lista blanca de comandos seguros (sin node/cat que permiten ejecución arbitraria)
+    const SAFE_COMMANDS = ['npm', 'npx', 'git', 'ls', 'echo', 'mkdir', 'cp', 'mv', 'tsc', 'eslint', 'rg', 'pwd'];
 
     const baseCommand = command.split('/')[0].split('\\')[0];
     if (!SAFE_COMMANDS.includes(baseCommand)) {
@@ -370,6 +382,16 @@ export class Agent {
 
     try {
       const allArgs = args ? args.split(' ') : [];
+
+      // Restringir subcomandos peligrosos de git
+      if (baseCommand === 'git' && allArgs.length > 0) {
+        const gitSub = allArgs[0];
+        const BLOCKED_GIT_SUBCMDS = ['push', 'reset', 'clean', 'checkout', 'cherry-pick'];
+        if (BLOCKED_GIT_SUBCMDS.includes(gitSub)) {
+          return { success: false, output: '', error: `Subcomando git "${gitSub}" no permitido por seguridad` };
+        }
+      }
+
       const result = spawnSync(command, allArgs, {
         cwd: this.config.workspaceRoot,
         encoding: 'utf-8',

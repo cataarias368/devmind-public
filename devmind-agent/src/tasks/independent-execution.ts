@@ -15,10 +15,25 @@ interface IsolatedTask {
  */
 export class IndependentExecution {
   /**
-   * Crea herramientas aisladas (clon superficial sin estado compartido).
+   * Crea herramientas aisladas (clon seguro sin estado compartido).
+   * Usa JSON serialization para evitar prototype pollution.
    */
   createIsolatedTools(tools: unknown[]): unknown[] {
-    return tools.map(t => ({ ...(t as Record<string, unknown>) }));
+    return tools.map(t => {
+      try {
+        return JSON.parse(JSON.stringify(t));
+      } catch {
+        // Fallback: clon superficial seguro sin __proto__
+        const clone: Record<string, unknown> = Object.create(null);
+        const obj = t as Record<string, unknown>;
+        for (const key of Object.keys(obj)) {
+          if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype') {
+            clone[key] = obj[key];
+          }
+        }
+        return clone;
+      }
+    });
   }
 
   /**
