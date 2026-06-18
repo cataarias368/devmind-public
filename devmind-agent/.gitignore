@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+workspace/
+generated_images/
+tests/coverage/
+*.log
