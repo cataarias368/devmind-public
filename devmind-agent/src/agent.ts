@@ -90,6 +90,13 @@ const FILE_TOOLS: ToolDefinition[] = [
       { name: 'type', type: 'string', description: 'Tipo: icon, diagram, mockup, general', required: false, enum: ['icon', 'diagram', 'mockup', 'general'] },
     ],
   },
+  {
+    name: 'generate_video',
+    description: 'Genera un video estilo anime/procedural a partir de una idea. Crea guion, dibuja escenas y las ensambla en MP4. No depende de APIs externas.',
+    parameters: [
+      { name: 'idea', type: 'string', description: 'Descripción de la historia o concepto a convertir en video', required: true },
+    ],
+  },
 ];
 
 const SYSTEM_PROMPT = `Eres DevMind, un agente de ingeniería de software autónomo de alto nivel.
@@ -116,7 +123,8 @@ HERRAMIENTAS DISPONIBLES:
 - list_files: Listar directorios
 - search_code: Buscar en el código
 - run_command: Ejecutar comandos
-- generate_image: Generar imágenes`;
+- generate_image: Generar imágenes
+- generate_video: Generar videos estilo anime/procedural a partir de una idea`;
 
 export class Agent {
   private readonly config: AgentConfig;
@@ -398,6 +406,8 @@ export class Agent {
           return await this.toolRunCommand(args.command as string, args.args as string);
         case 'generate_image':
           return await this.toolGenerateImage(args.prompt as string, args.type as string);
+        case 'generate_video':
+          return await this.toolGenerateVideo(args.idea as string);
         default:
           return { success: false, output: '', error: `Herramienta desconocida: ${toolCall.function.name}` };
       }
@@ -562,6 +572,20 @@ export class Agent {
       return { success: false, output: '', error: result.error || 'Error generando imagen' };
     } catch (err) {
       return { success: false, output: '', error: serializeError(err) };
+    }
+  }
+
+  private async toolGenerateVideo(idea: string): Promise<ToolResult> {
+    try {
+      const { VideoGenerator } = await import('./video/video-generator.js');
+      const gen = new VideoGenerator(this.config.llmProvider, resolve(this.config.workspaceRoot, 'generated_videos'));
+      const result = await gen.generate(idea);
+      return {
+        success: true,
+        output: `Video generado: ${result.path} (${result.scenes} escenas, ${result.duration.toFixed(1)}s)`,
+      };
+    } catch (err) {
+      return { success: false, output: '', error: `Error generando video: ${serializeError(err)}` };
     }
   }
 

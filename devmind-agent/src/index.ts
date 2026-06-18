@@ -21,6 +21,7 @@ import { AdvertisingManager } from './advertising.js';
 import { Monitor } from './monitor.js';
 import { scanAvailableModels } from './llm-scanner.js';
 import { A2AProtocol } from './a2a-protocol.js';
+import { VideoGenerator } from './video/index.js';
 import type { AgentCore } from './types.js';
 
 async function main(): Promise<void> {
@@ -364,6 +365,39 @@ async function main(): Promise<void> {
     return;
   }
 
+  // ======== GENERADOR DE VIDEO ========
+
+  if (args.includes('--video') || args.includes('--video-anime')) {
+    const cmdIndex = args.indexOf('--video-anime') !== -1 ? args.indexOf('--video-anime') : args.indexOf('--video');
+    const idea = args.slice(cmdIndex + 1).filter(a => !a.startsWith('--')).join(' ');
+
+    if (!idea) {
+      console.log('❌ Proporcioná una idea para el video.');
+      console.log('📝 Uso: devmind --video "Un robot que aprende a programar"');
+      console.log('📝 Uso: devmind --video-anime "Una historia de amor entre un programador y su computadora"');
+      return;
+    }
+
+    console.log(`🎬 Generando video: "${idea}"\n`);
+
+    const videoGen = new VideoGenerator(
+      llmProvider,
+      resolve(workspaceRoot, 'generated_videos')
+    );
+
+    try {
+      const result = await videoGen.generate(idea);
+      console.log(`\n✅ Video generado exitosamente:`);
+      console.log(`   📁 Ruta: ${result.path}`);
+      console.log(`   🎬 Escenas: ${result.scenes}`);
+      console.log(`   ⏱️  Duración: ${result.duration.toFixed(1)}s`);
+      console.log(`   📖 Título: ${result.title}`);
+    } catch (err) {
+      console.error(`❌ Error generando video: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
   // ======== DEV MIND 3.0: AUTO-MUTATION ========
 
   // LISTAR MODELOS DISPONIBLES
@@ -582,6 +616,10 @@ async function main(): Promise<void> {
 
   📢 Publicidad:
   devmind --ad-stats           Estadísticas de publicidad
+
+  🎬 Generación de Video:
+  devmind --video "idea"       Genera video estilo anime/procedural
+  devmind --video-anime "idea" Alias para --video
 
   🧬 DevMind 3.0 - Auto-Mutation:
   devmind --models             Listar modelos LLM disponibles
