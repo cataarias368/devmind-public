@@ -36,47 +36,28 @@ async function main(): Promise<void> {
   const config = getConfig();
   const workspaceRoot = resolve(config.WORKSPACE_ROOT);
 
-  console.log(`
-╔══════════════════════════════════════════════════════════╗
-║  🧠 DevMind Agent v3.0.0                               ║
-║  🔒 Identidad verificada                                ║
-║  📧 Contacto: ${ID.contact}                             ║
-║  📜 Licencia: ${ID.license}                             ║
-╚══════════════════════════════════════════════════════════╝
-  `);
+  console.log(`\n╔══════════════════════════════════════════════════════════╗\n║  🧠 DevMind Agent v3.0.0                               ║\n║  🔒 Identidad verificada                                ║\n║  📧 Contacto: ${ID.contact}                             ║\n║  📜 Licencia: ${ID.license}                             ║\n╚══════════════════════════════════════════════════════════╝`);
   console.log(`📂 Workspace: ${workspaceRoot}`);
 
   // --- Comandos de identidad ---
+  const args = process.argv.slice(2);
 
-  // WHOAMI: Mostrar identidad completa
-  if (process.argv.includes('--whoami')) {
-    console.log(show());
+  if (args.includes('--whoami')) { console.log(show()); process.exit(0); }
+  if (args.includes('--license-info')) { console.log(getLicensingInfo()); process.exit(0); }
+  if (args.includes('--claim')) {
+    const claimArgs = args.slice(args.indexOf('--claim') + 1);
+    claimRevenue(parseFloat(claimArgs[0] || '0'), claimArgs[1] || 'unknown');
     process.exit(0);
   }
 
-  // LICENSE: Mostrar informacion de licencias
-  if (process.argv.includes('--license-info')) {
-    console.log(getLicensingInfo());
-    process.exit(0);
-  }
-
-  // CLAIM: Reclamar ganancias
-  if (process.argv.includes('--claim')) {
-    const claimArgs = process.argv.slice(process.argv.indexOf('--claim') + 1);
-    const amount = parseFloat(claimArgs[0] || '0');
-    const source = claimArgs[1] || 'unknown';
-    claimRevenue(amount, source);
-    process.exit(0);
-  }
-
-  // --- Detectar uso comercial no autorizado ---
   detectCommercialUse();
-
-  // --- Control de publicidad ---
   const ads = getAds('free');
-  if (ads.length > 0) {
-    console.log('📢 [DevMind] Publicidad activa (plan gratuito)');
-  }
+  if (ads.length > 0) console.log('📢 [DevMind] Publicidad activa (plan gratuito)');
+
+  // --- Inicializar LLM Router (múltiples proveedores API) ---
+  const llmRouter = new LLMRouter(config.GLM_API_KEY);
+  const routerStats = llmRouter.getStats();
+  if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
 
   // --- Inicializar proveedores globales ---
   const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
@@ -106,13 +87,6 @@ async function main(): Promise<void> {
   const monitor = new Monitor(workspaceRoot);
   await monitor.init();
 
-  // --- Inicializar LLM Router (múltiples proveedores API) ---
-  const llmRouter = new LLMRouter(config.GLM_API_KEY);
-  const routerStats = llmRouter.getStats();
-  if (routerStats.active > 0) {
-    console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
-  }
-
   // Construir el núcleo del agente
   const agentCore: AgentCore = {
     llmProvider,
@@ -134,7 +108,7 @@ async function main(): Promise<void> {
 
   // --- PARSAR MODO DE OPERACIÓN ---
 
-  const args = process.argv.slice(2);
+  // args ya declarado arriba
 
   // ======== NUEVOS COMANDOS DE RENDIMIENTO ========
 
@@ -246,6 +220,7 @@ async function main(): Promise<void> {
       agentCore,
       apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
       allowedOrigins: config.ALLOWED_ORIGINS.split(','),
+      llmRouter,
     });
     await dashboard.start();
     console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
@@ -266,7 +241,6 @@ async function main(): Promise<void> {
       agentCore,
       apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
       allowedOrigins: config.ALLOWED_ORIGINS.split(','),
-      llmRouter,
     });
     await server.start();
     console.log('Presioná Ctrl+C para detener.');
@@ -415,56 +389,6 @@ async function main(): Promise<void> {
         const summary = await gitHub.getRepoSummary();
         console.log(summary);
         break;
-    }
-    return;
-  }
-
-  // ======== LLM ROUTER: PROVEEDORES API ========
-
-  // API-CHECK: Verificar proveedores disponibles
-  if (args.includes('--api-check')) {
-    const stats = llmRouter.getStats();
-    console.log('\n🔌 Proveedores API:\n');
-    console.log(`  Total registrados: ${stats.providers}`);
-    console.log(`  Activos: ${stats.active}\n`);
-
-    if (stats.providerList.length === 0) {
-      console.log('  ⚠️ No hay proveedores externos configurados.');
-      console.log('  💡 Agregá API keys en .env (GOOGLE_API_KEY, MISTRAL_API_KEY, GROQ_API_KEY, etc.)');
-    } else {
-      for (const p of stats.providerList) {
-        const icon = p.active ? '✅' : '❌';
-        console.log(`  ${icon} ${p.name}`);
-        console.log(`     Modelos: ${p.models.join(', ')}`);
-        console.log(`     Velocidad: ${p.speed} | Calidad: ${p.quality} | Tipo: ${p.type}`);
-        if (!p.active) {
-          console.log(`     ⚠️ No configurado (falta API key)`);
-        }
-      }
-    }
-
-    console.log(`\n  🧠 ZhipuAI GLM-4: Siempre disponible (fallback principal)`);
-    return;
-  }
-
-  // API-DEFAULT: Cambiar proveedor por defecto
-  if (args.includes('--api-default')) {
-    const providerId = args[args.indexOf('--api-default') + 1];
-    if (!providerId || providerId.startsWith('--')) {
-      console.log('❌ Especificá un proveedor: devmind --api-default <provider-id>');
-      console.log('\nProveedores disponibles:');
-      for (const p of llmRouter.getActiveProviders()) {
-        console.log(`  • ${p.id} (${p.name})`);
-      }
-      return;
-    }
-
-    const success = llmRouter.setDefaultProvider(providerId);
-    if (success) {
-      console.log(`✅ Proveedor por defecto cambiado a: ${providerId}`);
-    } else {
-      console.log(`❌ Proveedor "${providerId}" no disponible o no configurado.`);
-      console.log('💡 Usá --api-check para ver proveedores activos.');
     }
     return;
   }
@@ -725,10 +649,6 @@ async function main(): Promise<void> {
   devmind --video "idea"       Genera video estilo anime/procedural
   devmind --video-anime "idea" Alias para --video
 
-  🔌 Proveedores API:
-  devmind --api-check          Verificar proveedores API disponibles
-  devmind --api-default <id>   Cambiar proveedor por defecto
-
   🧬 DevMind 3.0 - Auto-Mutation:
   devmind --models             Listar modelos LLM disponibles
   devmind --auto-mutate [tarea] Ejecutar con auto-mutación de modelo
@@ -737,11 +657,6 @@ async function main(): Promise<void> {
   devmind --a2a [--node-name NAME]  Iniciar agente con A2A habilitado
   devmind --a2a-list                 Listar agentes A2A disponibles
   devmind --a2a-task [tarea]        Orquestar equipo para tarea compleja
-
-  🔒 Identidad y Protección:
-  devmind --whoami              Ver identidad del propietario
-  devmind --license-info        Ver información de licencias
-  devmind --claim <monto> <src> Reclamar ganancias
 
 Ejemplos:
   devmind "Crear una API REST con Express"

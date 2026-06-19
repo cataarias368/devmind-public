@@ -3,6 +3,7 @@
 // ============================================================
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
+import { readFile as readFileAsync } from 'fs/promises';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import type { AgentCore, LLMMessage } from './types.js';
@@ -115,8 +116,10 @@ export class DashboardServer {
       return;
     }
 
-    // Autenticación para rutas API
-    if (url.startsWith('/api/')) {
+    // Autenticación para rutas API de escritura (chat)
+    // Las rutas de solo lectura (status, logs, providers) no requieren auth
+    // para que el dashboard funcione sin configuración previa.
+    if (url.startsWith('/api/') && url !== '/api/status' && url !== '/api/logs' && url !== '/api/providers/status') {
       const authHeader = req.headers.authorization;
       if (authHeader !== `Bearer ${this.config.apiKey}`) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -155,15 +158,38 @@ export class DashboardServer {
         return;
       }
 
-      // Provider status API (for dashboard)
-      if (url === '/api/providers/status' && method === 'GET') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        if (this.config.llmRouter) {
-          const stats = this.config.llmRouter.getStats();
-          res.end(JSON.stringify({ success: true, data: stats.providerList }));
-        } else {
-          res.end(JSON.stringify({ success: true, data: [] }));
+      // API: Guardar API Key (desde el dashboard, sin auth previa)
+      if (url === '/api/config/apikey' && method === 'POST') {
+        const body = await this.readBody(req);
+        let parsed: { apiKey?: string };
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'JSON invalido' }));
+          return;
         }
+        const apiKey = typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '';
+        if (!apiKey) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'API Key requerida' }));
+          return;
+        }
+        // Actualizar en memoria para esta sesion
+        process.env.GLM_API_KEY = apiKey;
+        this.log('info', 'API Key configurada desde el dashboard');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'API Key configurada correctamente' }));
+        return;
+      }
+
+      // API: Verificar si API Key esta configurada
+      if (url === '/api/config/status' && method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          hasApiKey: !!process.env.GLM_API_KEY && process.env.GLM_API_KEY.length > 5,
+          version: '3.0.0'
+        }));
         return;
       }
 
@@ -171,7 +197,7 @@ export class DashboardServer {
       if (url === '/logo.png' && method === 'GET') {
         try {
           const logoPath = resolve(this.config.agentCore.workspaceRoot, '..', 'logo.png');
-          const logoData = readFileSync(logoPath);
+          const logoData = await readFileAsync(logoPath);
           res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
           res.end(logoData);
         } catch {
@@ -266,8 +292,8 @@ export class DashboardServer {
   }
 
   /**
-   * Devuelve el HTML completo del dashboard (Cabina de Mando).
-   * Carga desde archivo externo src/ui/dashboard.html.
+   * Devuelve el HTML completo del dashboard (sin React, vanilla JS).
+   * Incluye: Chat, Galería de imágenes, Logs, Tema claro/oscuro.
    * XSS-safe: usa textContent en vez de innerHTML para datos dinámicos.
    */
   private getDashboardHTML(): string {
@@ -275,12 +301,11 @@ export class DashboardServer {
       const htmlPath = resolve(__dirname, 'ui', 'dashboard.html');
       return readFileSync(htmlPath, 'utf-8');
     } catch {
-      // Fallback: HTML mínimo si no se encuentra el archivo
       return `<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><title>DevMind Agent</title></head>
 <body style="background:#0a0e17;color:#e6edf5;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">
 <div style="text-align:center"><h1>🧠 DevMind Agent</h1><p>Cargando dashboard...</p>
-<p style="color:#8b9bb5;font-size:0.85em">No se encontró src/ui/dashboard.html</p></div></body></html>`;
+<p style="color:#8b9bb5;font-size:0.85em">No se encontro src/ui/dashboard.html</p></div></body></html>`;
     }
   }
 }

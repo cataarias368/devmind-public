@@ -1,6 +1,6 @@
 {
   "name": "devmind-agent",
-  "version": "3.0.0",
+  "version": "2.0.0",
   "description": "Sistema de Ingeniería de Software Autónoma - DevMind Agent",
   "type": "module",
   "main": "dist/index.js",
@@ -42,5 +42,5 @@
     "ai",
     "glm"
   ],
-  "license": "AGPL-3.0"
+  "license": "MIT"
 }
