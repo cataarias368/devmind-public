@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+workspace
+generated_images
+generated_videos
+.devmind
+src/core/
