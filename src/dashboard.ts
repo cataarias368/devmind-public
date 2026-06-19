@@ -4,10 +4,15 @@
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { readFile as readFileAsync } from 'fs/promises';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { AgentCore, LLMMessage } from './types.js';
 import type { LLMRouter } from './llm-router.js';
+
+// Obtener __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface DashboardConfig {
   port: number;
@@ -322,15 +327,39 @@ export class DashboardServer {
    * XSS-safe: usa textContent en vez de innerHTML para datos dinámicos.
    */
   private getDashboardHTML(): string {
-    try {
-      const htmlPath = resolve(__dirname, 'ui', 'dashboard.html');
-      return readFileSync(htmlPath, 'utf-8');
-    } catch {
-      return `<!DOCTYPE html>
+    // Buscar dashboard.html en varias rutas posibles
+    const searchPaths = [
+      resolve(__dirname, 'ui', 'dashboard.html'),       // dist/ui/dashboard.html (compilado)
+      resolve(__dirname, '..', 'src', 'ui', 'dashboard.html'),  // src/ui/dashboard.html (desarrollo)
+      resolve(process.cwd(), 'src', 'ui', 'dashboard.html'),    // cwd/src/ui/dashboard.html
+    ];
+
+    for (const htmlPath of searchPaths) {
+      if (existsSync(htmlPath)) {
+        try {
+          return readFileSync(htmlPath, 'utf-8');
+        } catch (e) {
+          console.error(`[Dashboard] Error leyendo ${htmlPath}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+    }
+
+    // Fallback: HTML mínimo si no se encuentra
+    console.error('[Dashboard] No se encontro dashboard.html en ninguna ruta:');
+    for (const p of searchPaths) {
+      console.error(`  → ${p} (${existsSync(p) ? 'existe' : 'no existe'})`);
+    }
+    return `<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><title>DevMind Agent</title></head>
 <body style="background:#0a0e17;color:#e6edf5;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">
-<div style="text-align:center"><h1>🧠 DevMind Agent</h1><p>Cargando dashboard...</p>
-<p style="color:#8b9bb5;font-size:0.85em">No se encontro src/ui/dashboard.html</p></div></body></html>`;
-    }
+<div style="text-align:center;max-width:600px;padding:2rem">
+<h1 style="color:#58a6ff">🧠 DevMind Agent</h1>
+<p style="font-size:1.2rem;margin:1rem 0">Dashboard no encontrado</p>
+<p style="color:#8b9bb5">El archivo dashboard.html no se encuentra. Verifica que src/ui/dashboard.html existe.</p>
+<p style="color:#8b9bb5;font-size:0.85em">Rutas buscadas:</p>
+<ul style="color:#8b9bb5;text-align:left;font-size:0.8em;list-style:none;padding:0">
+${searchPaths.map(p => `<li>${p}</li>`).join('\n')}
+</ul>
+</div></body></html>`;
   }
 }
