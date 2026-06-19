@@ -1,6 +1,7 @@
 // ============================================================
-// src/image-providers/storyboard.ts - Generación de Storyboards/Video animado
-// Usa Pollinations.ai para generar frames — 100% GRATIS, sin API key
+// src/image-providers/storyboard.ts - Generación de Storyboards con frames consistentes
+// Usa Pollinations.ai — 100% GRATIS, sin API key
+// Genera frames con estilo consistente usando seeds correlacionados
 // ============================================================
 
 import { mkdir } from 'fs/promises';
@@ -15,7 +16,17 @@ export interface StoryboardScene {
   description: string;
   imageUrl: string;
   filePath: string;
-  duration: number; // segundos
+  duration: number;
+  // Efectos Ken Burns para el motor de video
+  kenBurns: {
+    startScale: number;
+    endScale: number;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  };
+  transition: 'crossfade' | 'dissolve' | 'slide-left' | 'zoom-in' | 'fade-black';
 }
 
 export interface StoryboardResult {
@@ -23,6 +34,7 @@ export interface StoryboardResult {
   scenes?: StoryboardScene[];
   title?: string;
   totalDuration?: number;
+  fps?: number;
   error?: string;
   provider?: string;
 }
@@ -36,10 +48,6 @@ export class StoryboardProvider {
     this.pollinations = new PollinationsProvider({ outputDir: config.outputDir });
   }
 
-  /**
-   * Genera un storyboard completo a partir de una idea.
-   * Crea múltiples escenas (frames) con Pollinations.
-   */
   async generate(
     idea: string,
     options?: {
@@ -47,6 +55,7 @@ export class StoryboardProvider {
       style?: string;
       width?: number;
       height?: number;
+      fps?: number;
     }
   ): Promise<StoryboardResult> {
     try {
@@ -56,25 +65,39 @@ export class StoryboardProvider {
       const style = options?.style || 'cinematic';
       const width = options?.width || 1344;
       const height = options?.height || 768;
+      const fps = options?.fps || 24;
+      const baseSeed = Math.floor(Math.random() * 10000);
 
-      // Generar descripciones de escenas
       const scenes = this.generateSceneDescriptions(idea, sceneCount, style);
-
       const storyboard: StoryboardScene[] = [];
       const title = this.generateTitle(idea);
+
+      const transitions: StoryboardScene['transition'][] = [
+        'crossfade', 'dissolve', 'slide-left', 'zoom-in', 'fade-black',
+        'crossfade', 'dissolve', 'slide-left',
+      ];
 
       for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
         console.log(`[Storyboard] Generando escena ${i + 1}/${scenes.length}: "${scene.slice(0, 50)}..."`);
 
-        const result = await this.pollinations.generate(scene, { width, height, seed: 1000 + i });
+        // Usar seeds correlacionados para consistencia visual
+        const result = await this.pollinations.generate(scene, {
+          width, height,
+          seed: baseSeed + i, // Seed correlacionado = estilo consistente
+        });
 
         if (result.success) {
+          // Generar efecto Ken Burns automático basado en la posición narrativa
+          const kenBurns = this.generateKenBurns(i, scenes.length);
+
           storyboard.push({
             description: scene,
             imageUrl: result.url || '',
             filePath: result.filePath || '',
-            duration: 3, // 3 segundos por escena
+            duration: 4, // 4 segundos por escena para video fluido
+            kenBurns,
+            transition: transitions[i % transitions.length],
           });
         } else {
           console.warn(`[Storyboard] Escena ${i + 1} falló: ${result.error}`);
@@ -92,6 +115,7 @@ export class StoryboardProvider {
         scenes: storyboard,
         title,
         totalDuration,
+        fps,
         provider: 'storyboard',
       };
     } catch (err) {
@@ -104,27 +128,60 @@ export class StoryboardProvider {
   }
 
   /**
-   * Genera descripciones de escenas a partir de una idea central.
-   * Usa patrones narrativos para crear variaciones coherentes.
+   * Genera descripciones de escenas con narrativa cinematográfica
+   * y variaciones de pose/ángulo para simular movimiento
    */
   private generateSceneDescriptions(idea: string, count: number, style: string): string[] {
     const scenes: string[] = [];
 
-    // Patrones narrativos para crear variaciones
+    // Fases narrativas con ángulos de cámara específicos
     const phases = [
-      { prefix: 'Opening shot, establishing scene:', mood: 'wide angle, atmospheric' },
-      { prefix: 'Close-up introduction:', mood: 'dramatic lighting, focus on subject' },
-      { prefix: 'Action scene, movement and energy:', mood: 'dynamic angle, motion blur' },
-      { prefix: 'Climactic moment, peak intensity:', mood: 'dramatic composition, vibrant colors' },
-      { prefix: 'Transition, change of perspective:', mood: 'creative angle, ethereal' },
-      { prefix: 'Development, deeper exploration:', mood: 'detailed, rich textures' },
-      { prefix: 'Resolution, calm after climax:', mood: 'soft lighting, peaceful' },
-      { prefix: 'Final shot, memorable ending:', mood: 'iconic composition, cinematic' },
+      {
+        prefix: 'Wide establishing shot, camera slowly panning right:',
+        camera: 'aerial view, epic scale, depth of field',
+        mood: 'peaceful, mysterious atmosphere',
+      },
+      {
+        prefix: 'Medium shot, character enters frame from left:',
+        camera: 'tracking shot, shallow depth of field, bokeh background',
+        mood: 'curious, determined expression',
+      },
+      {
+        prefix: 'Close-up reaction shot, camera pushing in slowly:',
+        camera: 'macro lens detail, dramatic lighting from side',
+        mood: 'intense emotion, eyes wide with wonder',
+      },
+      {
+        prefix: 'Action shot, dynamic movement, motion blur:',
+        camera: 'dutch angle, fast tracking, motion lines',
+        mood: 'energy, speed, determination',
+      },
+      {
+        prefix: 'Dramatic low angle shot, camera tilting up:',
+        camera: 'hero pose, rim lighting, lens flare',
+        mood: 'powerful moment, revelation',
+      },
+      {
+        prefix: 'Over-the-shoulder shot, two characters:',
+        camera: 'soft focus foreground, clear subject',
+        mood: 'connection, dialogue, tension',
+      },
+      {
+        prefix: 'Aerial pull-back shot, camera rising:',
+        camera: 'bird eye view, vast landscape, god rays',
+        mood: 'freedom, resolution, peace',
+      },
+      {
+        prefix: 'Final portrait shot, camera static, shallow DOF:',
+        camera: 'golden hour lighting, lens flare, bokeh',
+        mood: 'contemplation, hope, ending',
+      },
     ];
 
     for (let i = 0; i < count; i++) {
       const phase = phases[i % phases.length];
-      const sceneDesc = `${phase.prefix} ${idea}. ${phase.mood}, ${style} style, high quality, 16:9`;
+      // Misma idea + misma semilla de estilo = consistencia visual
+      const sceneDesc = `${phase.prefix} ${idea}. ${phase.camera}, ${phase.mood}, ${style} style, consistent character design, high quality, 16:9 aspect ratio`;
       scenes.push(sceneDesc);
     }
 
@@ -132,8 +189,36 @@ export class StoryboardProvider {
   }
 
   /**
-   * Genera un título a partir de la idea
+   * Genera efecto Ken Burns automático — crea ilusión de movimiento
+   * en imágenes estáticas (pan, zoom, rotación sutil)
    */
+  private generateKenBurns(
+    sceneIndex: number,
+    _totalScenes: number
+  ): StoryboardScene['kenBurns'] {
+    // Patrones de movimiento variados por posición narrativa
+    const patterns: StoryboardScene['kenBurns'][] = [
+      // Escena 1: Zoom in lento (establecimiento)
+      { startScale: 1.0, endScale: 1.15, startX: 0, startY: 0, endX: -0.05, endY: -0.03 },
+      // Escena 2: Pan derecha
+      { startScale: 1.1, endScale: 1.1, startX: -0.08, startY: 0, endX: 0.08, endY: 0 },
+      // Escena 3: Zoom in dramático
+      { startScale: 1.0, endScale: 1.3, startX: 0, startY: -0.05, endX: 0, endY: -0.1 },
+      // Escena 4: Pan izquierda + zoom
+      { startScale: 1.15, endScale: 1.25, startX: 0.08, startY: 0, endX: -0.05, endY: -0.03 },
+      // Escena 5: Zoom out revelador
+      { startScale: 1.3, endScale: 1.0, startX: 0, startY: -0.1, endX: 0, endY: 0 },
+      // Escena 6: Pan sutil
+      { startScale: 1.05, endScale: 1.1, startX: -0.03, startY: 0.02, endX: 0.03, endY: -0.02 },
+      // Escena 7: Zoom out épico
+      { startScale: 1.2, endScale: 1.0, startX: 0, startY: 0, endX: 0, endY: 0 },
+      // Escena 8: Zoom in final
+      { startScale: 1.0, endScale: 1.2, startX: 0, startY: 0, endX: 0, endY: -0.05 },
+    ];
+
+    return patterns[sceneIndex % patterns.length];
+  }
+
   private generateTitle(idea: string): string {
     const words = idea.split(' ').slice(0, 5).join(' ');
     return words.charAt(0).toUpperCase() + words.slice(1);
