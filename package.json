@@ -1,41 +1,46 @@
 {
-  "name": "devmind-public",
+  "name": "devmind-agent",
   "version": "3.0.0",
-  "description": "🧠 DevMind Agent — Open Source Autonomous Software Engineering",
+  "description": "Sistema de Ingeniería de Software Autónoma - DevMind Agent",
   "type": "module",
-  "main": "src/index.js",
-  "bin": {
-    "devmind": "./bin/devmind.js"
-  },
+  "main": "dist/index.js",
   "scripts": {
     "start": "npx tsx src/index.ts",
     "dev": "npx tsx --watch src/index.ts",
-    "postinstall": "git submodule update --init --recursive",
-    "update": "git submodule update --remote",
+    "cli": "npx tsx src/index.ts --cli",
+    "dashboard": "npx tsx src/index.ts --dashboard",
+    "api": "npx tsx src/index.ts --server",
+    "all": "npx tsx src/index.ts --all",
+    "docs": "npx tsx src/index.ts --docs",
+    "test": "npx tsx src/index.ts --test src/",
+    "analyze": "npx tsx src/index.ts --analyze",
+    "multi-agent": "npx tsx src/index.ts --multi-agent",
+    "bots": "npx tsx src/index.ts --bots",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "build": "tsc"
+    "lint": "eslint src/"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cataarias368/devmind-public.git"
-  },
-  "keywords": [
-    "ai",
-    "agent",
-    "autonomous",
-    "coding-assistant",
-    "glm",
-    "devops"
-  ],
-  "author": "Jose Luis Arias Casco <cataarias368@gmail.com>",
-  "license": "AGPL-3.0",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@mistralai/mistralai": "^2.2.6",
+    "canvas": "^3.2.3",
     "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.3.0",
+    "groq-sdk": "^1.2.1",
+    "sharp": "^0.35.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0"
-  }
+  },
+  "keywords": [
+    "agent",
+    "autonomous",
+    "devops",
+    "ai",
+    "glm"
+  ],
+  "license": "AGPL-3.0"
 }

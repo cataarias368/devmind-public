@@ -1,7 +1,7 @@
-# 🧠 DevMind Agent — Open Source Edition
+# 🧠 DevMind Agent v3.0
 
 <p align="center">
-  <img src="https://devmind.ai/logo.png" alt="DevMind Logo" width="200"/>
+  <img src="./logo.png" alt="DevMind Logo" width="200"/>
 </p>
 
 <h3 align="center">Autonomous Software Engineering Suite</h3>
@@ -12,6 +12,9 @@
   </a>
   <a href="https://github.com/cataarias368/devmind-agent/actions/workflows/ci.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/cataarias368/devmind-agent/ci.yml?branch=main" alt="CI"/>
+  </a>
+  <a href="https://github.com/cataarias368/devmind-agent">
+    <img src="https://img.shields.io/github/languages/top/cataarias368/devmind-agent" alt="language"/>
   </a>
   <a href="https://github.com/cataarias368/devmind-agent/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/cataarias368/devmind-agent" alt="License"/>
@@ -25,7 +28,7 @@
 
 ## 🚀 ¿Qué es DevMind?
 
-DevMind es un **agente de software autónomo** que puede planificar, ejecutar, probar, documentar y desplegar código sin intervención humana. Funciona como un equipo de desarrolladores 24/7, supervisado por un arquitecto senior.
+DevMind es un **agente de software autónomo** que puede planificar, ejecutar, probar, documentar y desplegar código sin intervención humana. Es como tener un equipo de desarrolladores junior 24/7, supervisado por un arquitecto senior.
 
 ### ✨ Características Principales
 
@@ -33,108 +36,185 @@ DevMind es un **agente de software autónomo** que puede planificar, ejecutar, p
 |----------------|-------------|
 | 🤖 **Agente Autónomo** | Planifica y ejecuta tareas de desarrollo sin supervisión |
 | 🧠 **Multi-Agente** | 5 agentes especializados trabajando en paralelo |
-| 🧬 **Auto-Mutation** | Motor de mutación con 5 estrategias y aprendizaje adaptativo |
-| 🤝 **A2A Protocol** | Comunicación agent-to-agent con descubrimiento |
+| 🧬 **Auto-Mutation** | Motor de mutación con 5 estrategias y aprendizaje adaptativo (EMA) |
+| 🤝 **A2A Protocol** | Comunicación agent-to-agent con descubrimiento por filesystem |
 | 🔌 **Multi-Provider LLM** | Google, Mistral, Groq, OpenRouter, Cloudflare + GLM-4 fallback |
 | 🎨 **Generación de Imágenes** | Íconos, diagramas, mockups con CogView |
-| 🎬 **Generación de Video** | 100% propio: Canvas + Sharp + FFmpeg |
+| 🎬 **Generación de Video** | 100% propio: Canvas + Sharp + FFmpeg, estilo anime/procedural |
 | 📚 **Documentación** | Genera MD/HTML/PDF automáticamente |
 | 🧪 **Tests** | Unitarios, integración y E2E |
 | 📊 **15 Módulos de Rendimiento** | Cache semántico, planificación dinámica, etc. |
-| 🔒 **Protección Anti-Clon** | Identidad encriptada con GPS integrado |
+| 🔌 **Plugins** | Extensible con herramientas personalizadas |
+| 🌐 **Dashboard Web** | Interfaz gráfica para controlar el agente |
+| 💬 **Bots** | Slack, Discord y Telegram |
+| 🐙 **GitHub** | Issues, PRs y búsqueda de código |
+| 🔒 **Protección Anti-Clon** | Identidad encriptada con SHA-256 y GPS integrado |
+| 📢 **Monetización** | Anuncios no intrusivos y sistema de licencias |
 
 ---
 
 ## 📦 Instalación
 
 ```bash
-# 1. Clonar el repositorio público
+# Clonar
 git clone https://github.com/cataarias368/devmind-public.git
 cd devmind-public
 
-# 2. Inicializar el submódulo Master
-git submodule update --init --recursive
-
-# 3. Instalar dependencias
+# Instalar dependencias
 npm install
 
-# 4. Configurar
+# Configurar API Key
 cp .env.example .env
 # Editar .env con tu GLM_API_KEY
 ```
 
-## 🚀 Uso
+## 🚀 Uso Rápido
 
 ```bash
-# Ejecutar una tarea
+# 1. Configurar API Key
+export GLM_API_KEY="tu-id.tu-secreto"
+
+# 2. Ejecutar tarea
 devmind "Refactoriza el módulo de autenticación"
 
-# Ver identidad del proyecto
+# 3. Dashboard web
+devmind --dashboard
+
+# 4. Documentación
+devmind --docs ./src
+
+# 5. Tests automáticos
+devmind --test ./src --run
+
+# 6. Health check
+devmind --health
+
+# 7. Ver identidad
 devmind --whoami
 
-# Información de licencias
-devmind --license
-
-# Reclamar ganancias
-devmind --claim 100 "publicidad"
+# 8. Ver licencias
+devmind --license-info
 ```
 
-## 🔗 Dependencias
+---
 
-Este repositorio público depende del **repositorio Master** para su funcionalidad completa:
+## 🎯 Comandos Disponibles
 
-🔗 **https://github.com/cataarias368/devmind-agent**
+| Comando | Descripción |
+|---------|-------------|
+| `devmind "tarea"` | Ejecutar tarea con el agente |
+| `devmind --dashboard` | Abrir dashboard web |
+| `devmind --docs ./src` | Generar documentación |
+| `devmind --test ./src` | Generar tests automáticos |
+| `devmind --multi-agent` | Ejecutar multi-agente en paralelo |
+| `devmind --bots` | Iniciar bots (Slack/Discord/Telegram) |
+| `devmind --server` | Servidor API REST |
+| `devmind --health` | Health check del sistema |
+| `devmind --metrics` | Ver métricas de rendimiento |
+| `devmind --suggest` | Sugerencias de mejora |
+| `devmind --status` | Estado completo del sistema |
+| `devmind --clear-cache` | Limpiar caché semántico |
+| `devmind --ad-stats` | Estadísticas de publicidad |
+| `devmind --video "idea"` | Generar video estilo anime/procedural |
+| `devmind --video-anime "idea"` | Alias para --video |
+| `devmind --api-check` | Verificar proveedores API disponibles |
+| `devmind --api-default <id>` | Cambiar proveedor por defecto |
+| `devmind --models` | Listar modelos LLM disponibles |
+| `devmind --auto-mutate [tarea]` | Ejecutar con auto-mutación de modelo |
+| `devmind --a2a` | Iniciar agente con protocolo A2A |
+| `devmind --a2a-list` | Listar agentes A2A disponibles |
+| `devmind --a2a-task [tarea]` | Orquestar equipo para tarea compleja |
+| `devmind --whoami` | Ver identidad del propietario |
+| `devmind --license-info` | Ver información de licencias |
+| `devmind --claim <monto> <src>` | Reclamar ganancias |
 
-El Master contiene:
-- ✅ Sistema de identidad encriptada
-- ✅ GPS y checkpoints de integridad
-- ✅ Sistema de monetización y publicidad
-- ✅ Módulos de rendimiento completos
-- ✅ Agente autónomo completo
+---
 
-## 🏗️ Arquitectura de Repositorios
+## 🔒 Sistema de Identidad y Protección
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CAPA 1: REPOSITORIO MASTER (PRIVADO)                   │
-│                    github.com/cataarias368/devmind-agent                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ✅ Código completo con identidad encriptada                              │
-│  ✅ Sistema de GPS y checkpoints                                          │
-│  ✅ Control de monetización (publicidad, licencias)                       │
-│  ✅ Solo el propietario tiene acceso de escritura                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼ (submódulo)
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CAPA 2: REPOSITORIO PÚBLICO (ESTE REPO)                │
-│                    github.com/cataarias368/devmind-public                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ✅ Código open source que carga el Master                                │
-│  ✅ Sin datos sensibles visibles                                          │
-│  ✅ Depende del Master para funcionar                                     │
-│  ✅ La comunidad puede contribuir                                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+DevMind incluye un sistema de identidad encriptada que protege contra clones no autorizados:
 
-## 📜 Licencia
+- **GPS Integrado**: La identidad del propietario está encriptada en el código con SHA-256
+- **Anti-Clon**: Si alguien modifica los datos del propietario, la firma digital cambia y el sistema se bloquea
+- **Control de Monetización**: Si se detecta una versión modificada, la publicidad se redirige al propietario original
+- **Comando `--whoami`**: Permite verificar la identidad del software en cualquier momento
 
-DevMind es AGPLv3. El código completo y el sistema de identidad residen en el repositorio Master.
+---
+
+## 📜 Licencias
 
 | Plan | Precio | Descripción |
 |------|--------|-------------|
-| Community | Gratis | Uso personal, educativo y open source |
+| Community | Gratis (AGPLv3) | Uso personal, educativo y open source |
 | Pro | $19/mes | Sin anuncios, modelos premium, generación ilimitada |
 | Enterprise | $99/mes | Privacidad total, soporte 24/7, on-premise |
 
-## 📧 Contacto
+📧 Contacto comercial: cataarias368@gmail.com
 
-**Creador:** José Luis Arias Casco
-**Correo:** cataarias368@gmail.com
-**GitHub:** https://github.com/cataarias368
+---
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         DEV MIND AGENT v3.0                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                │
+│  │   Cliente    │  │  Dashboard  │  │    Bots     │                │
+│  │   (CLI)      │  │   (Web)     │  │ (Slack/Disc)│                │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                │
+│         │                │                │                         │
+│         └────────────────┼────────────────┘                         │
+│                          ▼                                          │
+│                  ┌───────────────┐                                  │
+│                  │   API REST    │                                  │
+│                  │  (Express)    │                                  │
+│                  └───────┬───────┘                                  │
+│                          │                                          │
+│                          ▼                                          │
+│                  ┌───────────────┐                                  │
+│                  │    Agente     │                                  │
+│                  │   (Core)      │                                  │
+│                  └───────┬───────┘                                  │
+│                          │                                          │
+│        ┌─────────────────┼─────────────────┐                       │
+│        ▼                 ▼                 ▼                       │
+│  ┌───────────┐    ┌───────────┐    ┌───────────┐                  │
+│  │   LLM     │    │  Tools    │    │  Memory   │                  │
+│  │ (GLM-4 +  │    │ (File,    │    │ (Cort     │                  │
+│  │  Router)  │    │  Comandos)│    │  Plazo/   │                  │
+│  └───────────┘    └───────────┘    │  Episódica)│                  │
+│                                    └───────────┘                  │
+│                          │                                          │
+│        ┌─────────────────┼─────────────────┐                       │
+│        ▼                 ▼                 ▼                       │
+│  ┌───────────┐    ┌───────────┐    ┌───────────┐                  │
+│  │   Core    │    │Auto-Mutate│    │   A2A     │                  │
+│  │ Identidad │    │   (EMA)   │    │ Protocol  │                  │
+│  │(Protecc.) │    └───────────┘    └───────────┘                  │
+│  └───────────┘                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🤝 Contribución
+
+1. Fork el repositorio
+2. Crea tu rama (`git checkout -b feature/amazing`)
+3. Commit (`git commit -m 'Add amazing feature'`)
+4. Push (`git push origin feature/amazing`)
+5. Abre un Pull Request
+
+---
+
+## 📄 Licencia
+
+AGPLv3 © [Jose Luis Arias Casco](https://github.com/cataarias368)
 
 ---
 
 <p align="center">
-  Made with ❤️ by José Luis Arias Casco
+  Made with ❤️ by Jose Luis Arias Casco
 </p>
