@@ -62,6 +62,7 @@ export class DashboardServer {
   private readonly chatHistory: ChatMessage[] = [];
   private readonly logs: Array<{ level: string; message: string; timestamp: number }> = [];
   private readonly generatedImages: Array<{ prompt: string; url: string; filePath: string; timestamp: number; provider: string }> = [];
+  private readonly generatedVideos: Array<{ title: string; scenes: number; totalDuration: number; timestamp: number; provider: string }> = [];
 
   constructor(config: DashboardConfig) {
     this.config = config;
@@ -149,6 +150,7 @@ export class DashboardServer {
       '/api/status', '/api/logs', '/api/providers/status',
       '/api/config/status', '/api/config/providers', '/api/config/apikey',
       '/api/images', '/api/images/generate',
+      '/api/videos', '/api/videos/generate',
     ];
     const apiKeyConfigured = !!this.config.apiKey && this.config.apiKey !== 'devmind';
     if (url.startsWith('/api/') && !publicEndpoints.includes(url) && apiKeyConfigured) {
@@ -462,6 +464,63 @@ export class DashboardServer {
           res.writeHead(404, { 'Content-Type': 'text/plain' });
           res.end('Not Found');
         }
+        return;
+      }
+
+      // API: Generar video (storyboard animado)
+      if (url === '/api/videos/generate' && method === 'POST') {
+        const body = await this.readBody(req);
+        let parsed: { idea?: string; style?: string; sceneCount?: number };
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'JSON invalido' }));
+          return;
+        }
+        const idea = typeof parsed.idea === 'string' ? parsed.idea.trim() : '';
+        if (!idea) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Idea requerida' }));
+          return;
+        }
+
+        try {
+          const { StoryboardProvider } = await import('./image-providers/storyboard.js');
+          const outputDir = resolve(this.config.agentCore?.workspaceRoot || process.cwd(), 'generated_images');
+          const storyboard = new StoryboardProvider({ outputDir });
+          const result = await storyboard.generate(idea, {
+            sceneCount: parsed.sceneCount || 4,
+            style: parsed.style || 'cinematic',
+          });
+
+          if (result.success && result.scenes) {
+            this.generatedVideos.push({
+              title: result.title || idea.slice(0, 30),
+              scenes: result.scenes.length,
+              totalDuration: result.totalDuration || 0,
+              timestamp: Date.now(),
+              provider: 'storyboard',
+            });
+            this.log('info', `Video generado: "${result.title}" — ${result.scenes.length} escenas, ${result.totalDuration}s`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, title: result.title, scenes: result.scenes, totalDuration: result.totalDuration, provider: result.provider }));
+          } else {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: result.error || 'Error generando video' }));
+          }
+        } catch (vidErr) {
+          this.log('error', `Video generation error: ${vidErr instanceof Error ? vidErr.message : String(vidErr)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error generando video' }));
+        }
+        return;
+      }
+
+      // API: Listar videos generados
+      if (url === '/api/videos' && method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ videos: this.generatedVideos.slice(-20) }));
         return;
       }
 

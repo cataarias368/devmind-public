@@ -672,10 +672,53 @@ input,textarea{font-family:inherit}
     <!-- ═══ VIDEOS ═══ -->
     <section id="panel-videos" class="panel">
       <div class="panel-title"><span class="icon">&#x1F3AC;</span> Videos</div>
-      <div class="placeholder-content">
-        <div class="placeholder-icon">&#x1F3AC;</div>
-        <h2>Estudio de Video</h2>
-        <p>Genera y edita videos con IA. Crea contenido visual dinámico a partir de descripciones de texto.</p>
+      <div style="padding:1.5rem">
+        <div style="margin-bottom:1rem">
+          <p style="color:#8b9bb5;font-size:0.9rem;margin-bottom:1rem">Generá storyboards animados con IA. Cada escena se crea como un frame independiente y se reproduce como una secuencia.</p>
+        </div>
+        <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
+          <input id="vid-idea" type="text" placeholder="Describí tu idea para el video..." style="flex:1;min-width:200px;padding:0.75rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e6edf5;font-size:0.95rem;outline:none" onfocus="this.style.borderColor='#a371f7'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <select id="vid-style" style="padding:0.75rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e6edf5;font-size:0.9rem">
+            <option value="cinematic">Cinemático</option>
+            <option value="anime">Anime</option>
+            <option value="digital-art">Arte Digital</option>
+            <option value="realistic">Realista</option>
+            <option value="pixel-art">Pixel Art</option>
+            <option value="watercolor">Acuarela</option>
+          </select>
+          <select id="vid-scenes" style="padding:0.75rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e6edf5;font-size:0.9rem">
+            <option value="3">3 escenas</option>
+            <option value="4" selected>4 escenas</option>
+            <option value="6">6 escenas</option>
+            <option value="8">8 escenas</option>
+          </select>
+          <button id="btn-gen-vid" onclick="generateVideo()" style="padding:0.75rem 1.5rem;background:linear-gradient(135deg,#a371f7,#f778ba);border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer;transition:transform 0.15s" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">🎬 Generar Video</button>
+        </div>
+        <div id="vid-status" style="display:none;padding:0.75rem;margin-bottom:1rem;background:rgba(163,113,247,0.1);border:1px solid rgba(163,113,247,0.2);border-radius:8px;color:#a371f7;font-size:0.9rem;text-align:center"></div>
+        <div id="vid-progress" style="display:none;margin-bottom:1rem">
+          <div style="background:rgba(255,255,255,0.05);border-radius:8px;overflow:hidden;height:6px">
+            <div id="vid-progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#a371f7,#f778ba);transition:width 0.5s;border-radius:8px"></div>
+          </div>
+        </div>
+        <div id="vid-player" style="display:none;margin-bottom:1.5rem;background:rgba(0,0,0,0.3);border-radius:12px;overflow:hidden;position:relative;aspect-ratio:16/9">
+          <img id="vid-frame" style="width:100%;height:100%;object-fit:cover" alt="Frame">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:0.75rem 1rem;background:linear-gradient(transparent,rgba(0,0,0,0.8));display:flex;justify-content:space-between;align-items:center">
+            <span id="vid-scene-label" style="color:#e6edf5;font-size:0.85rem"></span>
+            <span id="vid-time-label" style="color:#8b9bb5;font-size:0.8rem"></span>
+          </div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">
+            <button id="vid-play-btn" onclick="togglePlay()" style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.4);color:#fff;font-size:1.2rem;cursor:pointer;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center">&#9654;</button>
+          </div>
+        </div>
+        <div id="vid-storyboard" style="display:none">
+          <h3 style="color:#e6edf5;font-size:1rem;margin-bottom:0.75rem">Storyboard</h3>
+          <div id="vid-frames" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem"></div>
+        </div>
+        <div id="vid-empty" style="text-align:center;padding:3rem;color:#8b9bb5">
+          <div style="font-size:3rem;margin-bottom:0.5rem">🎬</div>
+          <p>Escribí tu idea y generá un storyboard animado</p>
+          <p style="font-size:0.8rem;color:#6e7a8a">Cada escena se genera con Pollinations.ai — 100% gratis</p>
+        </div>
       </div>
     </section>
 
@@ -1475,6 +1518,134 @@ input,textarea{font-family:inherit}
       }catch(e){}
     }
     loadImages();
+
+    // === VIDEO GENERATION ===
+    const vidIdea=document.getElementById('vid-idea');
+    const vidStyle=document.getElementById('vid-style');
+    const vidScenes=document.getElementById('vid-scenes');
+    const vidStatus=document.getElementById('vid-status');
+    const vidProgress=document.getElementById('vid-progress');
+    const vidProgressBar=document.getElementById('vid-progress-bar');
+    const vidPlayer=document.getElementById('vid-player');
+    const vidFrame=document.getElementById('vid-frame');
+    const vidSceneLabel=document.getElementById('vid-scene-label');
+    const vidTimeLabel=document.getElementById('vid-time-label');
+    const vidPlayBtn=document.getElementById('vid-play-btn');
+    const vidStoryboard=document.getElementById('vid-storyboard');
+    const vidFrames=document.getElementById('vid-frames');
+    const vidEmpty=document.getElementById('vid-empty');
+    const btnGenVid=document.getElementById('btn-gen-vid');
+
+    let videoScenes=[];
+    let videoPlaying=false;
+    let videoInterval=null;
+    let currentFrame=0;
+
+    if(vidIdea){
+      vidIdea.addEventListener('keydown',function(e){
+        if(e.key==='Enter') generateVideo();
+      });
+    }
+
+    window.generateVideo=async function(){
+      const idea=vidIdea?vidIdea.value.trim():'';
+      if(!idea) return;
+
+      const style=vidStyle?vidStyle.value:'cinematic';
+      const sceneCount=vidScenes?parseInt(vidScenes.value):4;
+
+      if(btnGenVid){btnGenVid.disabled=true;btnGenVid.textContent='⏳ Generando...';}
+      if(vidStatus){vidStatus.style.display='block';vidStatus.textContent='🎬 Generando storyboard... Esto puede tardar 30-90 segundos';}
+      if(vidProgress){vidProgress.style.display='block';vidProgressBar.style.width='0%';}
+      if(vidEmpty) vidEmpty.style.display='none';
+      if(vidPlayer) vidPlayer.style.display='none';
+      if(vidStoryboard) vidStoryboard.style.display='none';
+
+      // Simular progreso
+      let progress=0;
+      const progressTimer=setInterval(()=>{progress=Math.min(progress+Math.random()*8,90);if(vidProgressBar)vidProgressBar.style.width=progress+'%';},2000);
+
+      try{
+        const r=await fetch('/api/videos/generate',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({idea:idea,style:style,sceneCount:sceneCount})
+        });
+        const data=await r.json();
+        clearInterval(progressTimer);
+        if(vidProgressBar) vidProgressBar.style.width='100%';
+
+        if(data.success&&data.scenes){
+          videoScenes=data.scenes;
+          currentFrame=0;
+          if(vidStatus){vidStatus.style.display='block';vidStatus.textContent='✅ Video generado: '+data.scenes.length+' escenas, '+data.totalDuration+'s';}
+          if(vidPlayer) vidPlayer.style.display='block';
+          if(vidStoryboard) vidStoryboard.style.display='block';
+          if(vidFrames) vidFrames.innerHTML='';
+
+          // Mostrar primer frame
+          showFrame(0);
+
+          // Crear storyboard thumbnails
+          for(let i=0;i<data.scenes.length;i++){
+            const scene=data.scenes[i];
+            const thumb=document.createElement('div');
+            thumb.style.cssText='cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color 0.2s';
+            thumb.onmouseover=function(){thumb.style.borderColor='rgba(163,113,247,0.5)';};
+            thumb.onmouseout=function(){thumb.style.borderColor='transparent';};
+            thumb.onclick=function(){showFrame(i);};
+
+            const img=document.createElement('img');
+            img.src=scene.imageUrl;
+            img.alt='Escena '+(i+1);
+            img.style.cssText='width:100%;aspect-ratio:16/9;object-fit:cover;display:block';
+            img.loading='lazy';
+
+            const label=document.createElement('div');
+            label.style.cssText='padding:0.4rem;font-size:0.75rem;color:#8b9bb5';
+            label.textContent='Escena '+(i+1)+' — '+scene.duration+'s';
+
+            thumb.appendChild(img);
+            thumb.appendChild(label);
+            if(vidFrames) vidFrames.appendChild(thumb);
+          }
+
+          if(vidIdea) vidIdea.value='';
+        }else{
+          if(vidStatus){vidStatus.style.display='block';vidStatus.textContent='❌ Error: '+(data.error||'Error desconocido');}
+        }
+      }catch(e){
+        clearInterval(progressTimer);
+        if(vidStatus){vidStatus.style.display='block';vidStatus.textContent='❌ Error de conexión';}
+      }finally{
+        if(btnGenVid){btnGenVid.disabled=false;btnGenVid.textContent='🎬 Generar Video';}
+      }
+    };
+
+    function showFrame(index){
+      if(!videoScenes.length) return;
+      currentFrame=index;
+      const scene=videoScenes[index];
+      if(vidFrame) vidFrame.src=scene.imageUrl;
+      if(vidSceneLabel) vidSceneLabel.textContent='Escena '+(index+1)+': '+scene.description.slice(0,60)+'...';
+      const startTime=index*3;
+      if(vidTimeLabel) vidTimeLabel.textContent=startTime+'s / '+(videoScenes.length*3)+'s';
+    }
+
+    window.togglePlay=function(){
+      if(videoPlaying){
+        videoPlaying=false;
+        clearInterval(videoInterval);
+        if(vidPlayBtn) vidPlayBtn.innerHTML='&#9654;';
+      }else{
+        videoPlaying=true;
+        if(vidPlayBtn) vidPlayBtn.innerHTML='&#9646;&#9646;';
+        videoInterval=setInterval(()=>{
+          currentFrame=(currentFrame+1)%videoScenes.length;
+          showFrame(currentFrame);
+        },3000);
+      }
+    };
   }
 
   init();
