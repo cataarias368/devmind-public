@@ -3,9 +3,9 @@
 // ============================================================
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { readFile as readFileAsync } from 'fs/promises';
+import { readFile as readFileAsync, writeFile as writeFileAsync } from 'fs/promises';
 import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import type { AgentCore, LLMMessage } from './types.js';
 import type { LLMRouter } from './llm-router.js';
@@ -142,7 +142,14 @@ export class DashboardServer {
     // Autenticación para rutas API de escritura (chat)
     // Las rutas de solo lectura (status, logs, providers) no requieren auth
     // para que el dashboard funcione sin configuración previa.
-    if (url.startsWith('/api/') && url !== '/api/status' && url !== '/api/logs' && url !== '/api/providers/status') {
+    // /api/config/apikey tampoco requiere auth — es el punto de entrada
+    // para que el usuario configure su primera API Key desde la UI.
+    const publicEndpoints = [
+      '/api/status', '/api/logs', '/api/providers/status',
+      '/api/config/status', '/api/config/providers', '/api/config/apikey',
+    ];
+    const apiKeyConfigured = !!this.config.apiKey && this.config.apiKey !== 'devmind';
+    if (url.startsWith('/api/') && !publicEndpoints.includes(url) && apiKeyConfigured) {
       const authHeader = req.headers.authorization;
       if (authHeader !== `Bearer ${this.config.apiKey}`) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -184,7 +191,7 @@ export class DashboardServer {
       // API: Guardar API Key (desde el dashboard, sin auth previa)
       if (url === '/api/config/apikey' && method === 'POST') {
         const body = await this.readBody(req);
-        let parsed: { apiKey?: string };
+        let parsed: { apiKey?: string; provider?: string };
         try {
           parsed = JSON.parse(body);
         } catch {
@@ -193,25 +200,173 @@ export class DashboardServer {
           return;
         }
         const apiKey = typeof parsed.apiKey === 'string' ? parsed.apiKey.trim() : '';
+        const provider = typeof parsed.provider === 'string' ? parsed.provider : 'zhipuai';
         if (!apiKey) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'API Key requerida' }));
           return;
         }
-        // Actualizar en memoria para esta sesion
-        process.env.GLM_API_KEY = apiKey;
-        this.log('info', 'API Key configurada desde el dashboard');
+
+        // Mapear provider a variable de entorno
+        const envKeyMap: Record<string, string> = {
+          'zhipuai': 'GLM_API_KEY',
+          'google-ai-studio': 'GOOGLE_API_KEY',
+          'mistral': 'MISTRAL_API_KEY',
+          'groq': 'GROQ_API_KEY',
+          'openrouter': 'OPENROUTER_API_KEY',
+          'cloudflare': 'CLOUDFLARE_API_KEY',
+        };
+        const envKey = envKeyMap[provider] || 'GLM_API_KEY';
+
+        // 1. Actualizar en memoria
+        process.env[envKey] = apiKey;
+
+        // 2. Persistir en .env
+        try {
+          const envPath = join(process.cwd(), '.env');
+          let envContent = '';
+          if (existsSync(envPath)) {
+            envContent = readFileSync(envPath, 'utf-8');
+          }
+          const keyRegex = new RegExp(`^${envKey}=.*$`, 'm');
+          if (keyRegex.test(envContent)) {
+            envContent = envContent.replace(keyRegex, `${envKey}=${apiKey}`);
+          } else {
+            envContent += `\n${envKey}=${apiKey}\n`;
+          }
+          await writeFileAsync(envPath, envContent, 'utf-8');
+          this.log('info', `API Key para ${provider} guardada en .env (${envKey})`);
+        } catch (envErr) {
+          this.log('warn', `No se pudo escribir .env: ${envErr instanceof Error ? envErr.message : String(envErr)}. Key en memoria.`);
+        }
+
+        // 3. Re-inyectar LLM si era la key principal y no hay agentCore aún
+        if (provider === 'zhipuai' && !this.config.agentCore) {
+          try {
+            const { GLM47Provider } = await import('./llm-provider.js');
+            const { CogViewProvider } = await import('./image-provider.js');
+            const { CheckpointManager } = await import('./checkpoint.js');
+            const { MemoryStore } = await import('./memory.js');
+            const { LLMRouter } = await import('./llm-router.js');
+
+            const workspaceRoot = process.env.WORKSPACE_ROOT || process.cwd();
+            const llmProvider = new GLM47Provider({ apiKey });
+            const imageProvider = new CogViewProvider({ apiKey, outputDir: resolve(workspaceRoot, 'generated_images') });
+            const checkpointManager = new CheckpointManager(workspaceRoot);
+            const memoryStore = new MemoryStore(workspaceRoot);
+            await checkpointManager.init();
+            await memoryStore.init();
+
+            const llmRouter = new LLMRouter(apiKey);
+
+            this.setAgentCore({ llmProvider, imageProvider, checkpointManager, memoryStore, workspaceRoot });
+            this.setLLMRouter(llmRouter);
+
+            const routerStats = llmRouter.getStats();
+            this.log('info', `LLM inyectado dinámicamente. Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
+          } catch (injectErr) {
+            this.log('error', `Error inyectando LLM: ${injectErr instanceof Error ? injectErr.message : String(injectErr)}`);
+          }
+        }
+
+        // 4. Crear/re-registrar router si no existe o si se agregó un provider nuevo
+        if (provider !== 'zhipuai' || !this.config.llmRouter) {
+          try {
+            const { LLMRouter } = await import('./llm-router.js');
+            const glmKey = process.env.GLM_API_KEY || 'placeholder';
+            const newRouter = new LLMRouter(glmKey);
+            this.setLLMRouter(newRouter);
+            const routerStats = newRouter.getStats();
+            this.log('info', `Router creado/re-inicializado: ${routerStats.active}/${routerStats.providers} proveedores activos`);
+          } catch (routerErr) {
+            this.log('warn', `Error creando/re-inicializando router: ${routerErr instanceof Error ? routerErr.message : String(routerErr)}`);
+          }
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: 'API Key configurada correctamente' }));
+        res.end(JSON.stringify({ success: true, message: `API Key para ${provider} configurada correctamente`, provider }));
         return;
       }
 
       // API: Verificar si API Key esta configurada
       if (url === '/api/config/status' && method === 'GET') {
+        const hasAnyKey = !!(
+          process.env.GLM_API_KEY ||
+          process.env.OPENROUTER_API_KEY ||
+          process.env.GOOGLE_API_KEY ||
+          process.env.MISTRAL_API_KEY ||
+          process.env.GROQ_API_KEY ||
+          process.env.CLOUDFLARE_API_KEY
+        );
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
-          hasApiKey: !!process.env.GLM_API_KEY && process.env.GLM_API_KEY.length > 5,
-          version: '3.0.0'
+          hasApiKey: hasAnyKey,
+          version: '3.0.0',
+          workspace: process.env.WORKSPACE_ROOT || './workspace',
+          environment: process.env.NODE_ENV || 'development',
+          llmAvailable: !!this.config.agentCore?.llmProvider,
+          routerAvailable: !!this.config.llmRouter,
+        }));
+        return;
+      }
+
+      // API: Estado de todos los proveedores LLM
+      if (url === '/api/providers/status' && method === 'GET') {
+        try {
+          if (!this.config.llmRouter) {
+            // Sin router: devolver proveedores conocidos como no configurados
+            const defaultProviders = [
+              { id: 'zhipuai', name: 'GLM-4 (ZhipuAI)', active: false, models: ['glm-4'], speed: 'medium', quality: 'high', type: 'free', configured: !!process.env.GLM_API_KEY },
+              { id: 'google-ai-studio', name: 'Google AI Studio', active: false, models: ['gemini-2.5-flash', 'gemini-2.5-pro'], speed: 'fast', quality: 'high', type: 'free', configured: !!process.env.GOOGLE_API_KEY },
+              { id: 'mistral', name: 'Mistral AI', active: false, models: ['mistral-small-latest', 'mistral-medium-latest'], speed: 'medium', quality: 'high', type: 'free', configured: !!process.env.MISTRAL_API_KEY },
+              { id: 'groq', name: 'Groq', active: false, models: ['llama-3.3-70b-versatile'], speed: 'fast', quality: 'medium', type: 'free', configured: !!process.env.GROQ_API_KEY },
+              { id: 'openrouter', name: 'OpenRouter', active: false, models: ['meta-llama/llama-3.3-70b-instruct:free'], speed: 'medium', quality: 'medium', type: 'free', configured: !!process.env.OPENROUTER_API_KEY },
+              { id: 'cloudflare', name: 'Cloudflare Workers AI', active: false, models: ['@cf/meta/llama-3.3-70b-instruct-fp8-fast'], speed: 'medium', quality: 'medium', type: 'free', configured: !!(process.env.CLOUDFLARE_API_KEY && process.env.CLOUDFLARE_ACCOUNT_ID) },
+            ];
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, data: defaultProviders, timestamp: new Date().toISOString() }));
+            return;
+          }
+
+          // Con router: obtener estado real
+          const stats = this.config.llmRouter.getStats();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: stats.providerList, timestamp: new Date().toISOString() }));
+        } catch (err) {
+          this.log('error', `Providers status error: ${err instanceof Error ? err.message : String(err)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error obteniendo estado de proveedores', success: false }));
+        }
+        return;
+      }
+
+      // API: Lista de proveedores disponibles (para configuración)
+      if (url === '/api/config/providers' && method === 'GET') {
+        const providers = [
+          { id: 'zhipuai', name: 'GLM-4 (ZhipuAI)', requiresKey: true, keyEnvVar: 'GLM_API_KEY', configured: !!process.env.GLM_API_KEY },
+          { id: 'google-ai-studio', name: 'Google AI Studio', requiresKey: true, keyEnvVar: 'GOOGLE_API_KEY', configured: !!process.env.GOOGLE_API_KEY },
+          { id: 'mistral', name: 'Mistral AI', requiresKey: true, keyEnvVar: 'MISTRAL_API_KEY', configured: !!process.env.MISTRAL_API_KEY },
+          { id: 'groq', name: 'Groq', requiresKey: true, keyEnvVar: 'GROQ_API_KEY', configured: !!process.env.GROQ_API_KEY },
+          { id: 'openrouter', name: 'OpenRouter', requiresKey: true, keyEnvVar: 'OPENROUTER_API_KEY', configured: !!process.env.OPENROUTER_API_KEY },
+          { id: 'cloudflare', name: 'Cloudflare Workers AI', requiresKey: true, keyEnvVar: 'CLOUDFLARE_API_KEY', configured: !!(process.env.CLOUDFLARE_API_KEY && process.env.CLOUDFLARE_ACCOUNT_ID) },
+        ];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ providers }));
+        return;
+      }
+
+      // Health check
+      if (url === '/health' && method === 'GET') {
+        const hasLLM = !!this.config.agentCore?.llmProvider;
+        const hasRouter = !!this.config.llmRouter;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'ok',
+          uptime: process.uptime(),
+          llm: hasLLM ? 'connected' : 'not_configured',
+          router: hasRouter ? 'active' : 'inactive',
+          memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+          timestamp: new Date().toISOString(),
         }));
         return;
       }

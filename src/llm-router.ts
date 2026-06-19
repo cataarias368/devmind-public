@@ -30,11 +30,18 @@ export interface ProviderStatus {
 
 export class LLMRouter {
   private providers: Map<string, LLMProviderInfo> = new Map();
-  private glmProvider: GLM47Provider;
+  private glmProvider: GLM47Provider | null = null;
   private defaultProviderId: string = 'zhipuai';
 
   constructor(glmApiKey: string) {
-    this.glmProvider = new GLM47Provider({ apiKey: glmApiKey });
+    // GLM-4 es opcional: solo se crea si la key tiene formato válido
+    if (glmApiKey && glmApiKey.includes('.')) {
+      try {
+        this.glmProvider = new GLM47Provider({ apiKey: glmApiKey });
+      } catch {
+        console.warn('[LLMRouter] GLM_API_KEY inválida — GLM-4 no disponible como fallback');
+      }
+    }
     this.registerProviders();
   }
 
@@ -164,6 +171,9 @@ export class LLMRouter {
   async callWithFallback(messages: LLMMessage[], task: string, tools?: ToolDefinition[], maxRetries = 3): Promise<LLMResponse & { providerUsed: string; fallbackUsed: boolean }> {
     const provider = await this.getBestProvider(task);
     if (!provider) {
+      if (!this.glmProvider) {
+        throw new Error('No hay proveedores LLM disponibles. Configurá al menos una API Key (GLM, OpenRouter, Google, etc.).');
+      }
       const response = await this.glmProvider.call(messages, tools);
       return { ...response, providerUsed: 'zhipuai', fallbackUsed: false };
     }
@@ -181,13 +191,17 @@ export class LLMRouter {
         console.warn(`[LLMRouter] ${currentProvider.name} fallo (intento ${attempt + 1}): ${lastError.message}`);
       }
     }
-    console.warn('[LLMRouter] Todos los proveedores externos fallaron. Usando GLM-4 como fallback.');
-    try {
-      const response = await this.glmProvider.call(messages, tools);
-      return { ...response, providerUsed: 'zhipuai', fallbackUsed: true };
-    } catch (glmErr) {
-      throw new Error(`Todos los proveedores fallaron (incluido GLM-4): ${lastError?.message}; GLM-4: ${glmErr instanceof Error ? glmErr.message : String(glmErr)}`);
+    // Fallback a GLM-4 solo si está disponible
+    if (this.glmProvider) {
+      console.warn('[LLMRouter] Todos los proveedores externos fallaron. Usando GLM-4 como fallback.');
+      try {
+        const response = await this.glmProvider.call(messages, tools);
+        return { ...response, providerUsed: 'zhipuai', fallbackUsed: true };
+      } catch (glmErr) {
+        throw new Error(`Todos los proveedores fallaron (incluido GLM-4): ${lastError?.message}; GLM-4: ${glmErr instanceof Error ? glmErr.message : String(glmErr)}`);
+      }
     }
+    throw new Error(`Todos los proveedores disponibles fallaron y GLM-4 no está configurado. Último error: ${lastError?.message || 'desconocido'}`);
   }
 
   getStats(): { providers: number; active: number; providerList: ProviderStatus[] } {
@@ -207,5 +221,5 @@ export class LLMRouter {
   }
 
   getDefaultProviderId(): string { return this.defaultProviderId; }
-  getGLMProvider(): GLM47Provider { return this.glmProvider; }
+  getGLMProvider(): GLM47Provider | null { return this.glmProvider; }
 }
