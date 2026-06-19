@@ -15,7 +15,9 @@ if (existsSync(envPath)) {
 
 const ConfigSchema = z.object({
   // --- Obligatorios ---
-  GLM_API_KEY: z.string().min(1, 'GLM_API_KEY es obligatoria. Obtenla en https://open.bigmodel.cn'),
+  // GLM_API_KEY es opcional al arrancar. El dashboard funciona sin ella.
+  // El usuario puede configurarla desde la UI del dashboard.
+  GLM_API_KEY: z.string().default(''),
 
   // --- Autenticación separada ---
   // API_AUTH_KEY se usa para autenticar Dashboard y REST API.

@@ -55,14 +55,20 @@ async function main(): Promise<void> {
   if (ads.length > 0) console.log('📢 [DevMind] Publicidad activa (plan gratuito)');
 
   // --- Inicializar LLM Router (múltiples proveedores API) ---
-  const llmRouter = new LLMRouter(config.GLM_API_KEY);
+  const llmRouter = new LLMRouter(config.GLM_API_KEY || 'placeholder');
   const routerStats = llmRouter.getStats();
   if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
 
+  // --- Aviso si no hay API Key ---
+  if (!config.GLM_API_KEY) {
+    console.warn('⚠️  GLM_API_KEY no configurada. El dashboard funcionará, pero el chat requerirá que configures tu API Key desde la UI.');
+    console.warn('   💡 Obtenela en: https://open.bigmodel.cn/');
+  }
+
   // --- Inicializar proveedores globales ---
-  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY || 'placeholder' });
   const imageProvider = new CogViewProvider({
-    apiKey: config.GLM_API_KEY,
+    apiKey: config.GLM_API_KEY || 'placeholder',
     outputDir: resolve(workspaceRoot, 'generated_images'),
   });
   const checkpointManager = new CheckpointManager(workspaceRoot);

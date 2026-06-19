@@ -112,5 +112,17 @@ echo ""
 read -p "Iniciar DevMind ahora? (s/n): " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[SsYy]$ ]]; then
-    npx tsx src/index.ts --dashboard
+    # Iniciar en background y abrir navegador
+    npx tsx src/index.ts --dashboard &
+    SERVER_PID=$!
+    sleep 3
+    # Abrir navegador automaticamente
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        open http://localhost:3001
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        xdg-open http://localhost:3001 2>/dev/null || echo "  Abri manualmente: http://localhost:3001"
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        start http://localhost:3001
+    fi
+    wait $SERVER_PID
 fi

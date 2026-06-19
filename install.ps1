@@ -88,5 +88,8 @@ Write-Host ""
 # Preguntar si quiere iniciar
 $reply = Read-Host "Iniciar DevMind ahora? (s/n)"
 if ($reply -eq "s" -or $reply -eq "S" -or $reply -eq "y" -or $reply -eq "Y") {
-    npx tsx src/index.ts --dashboard
+    # Iniciar en background y abrir navegador
+    Start-Process -NoNewWindow -FilePath "npx" -ArgumentList "tsx","src/index.ts","--dashboard"
+    Start-Sleep -Seconds 3
+    Start-Process "http://localhost:3001"
 }
