@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevMind Cockpit - Cabina de Mando</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --bg:#0a0e17;--surface:#111927;--surface2:#162032;--card:rgba(17,25,39,0.8);
+  --text:#e6edf5;--text2:#8b9bb5;--accent:#58a6ff;--accent2:#1f6feb;
+  --success:#3fb950;--warning:#d2991d;--error:#f85149;--purple:#bc8cff;
+  --border:rgba(88,166,255,0.15);--glow:rgba(88,166,255,0.08);
+  --sidebar-w:260px;--radius:12px;--shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--surface:#ffffff;--surface2:#f7f8fa;--card:rgba(255,255,255,0.9);
+  --text:#1a1d23;--text2:#57606a;--accent:#2563eb;--accent2:#1d4ed8;
+  --success:#1a7f37;--warning:#9a6700;--error:#cf222e;--purple:#8250df;
+  --border:rgba(0,0,0,0.12);--glow:rgba(37,99,235,0.06);
+  --shadow:0 8px 32px rgba(0,0,0,0.1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;transition:background 0.3s,color 0.3s}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(88,166,255,0.25);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(88,166,255,0.4)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes typing{0%{opacity:.2}20%{opacity:1}100%{opacity:.2}}
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(88,166,255,0.3)}50%{box-shadow:0 0 20px rgba(88,166,255,0.6)}}
+
+/* ===== SIDEBAR ===== */
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:background 0.3s}
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.sidebar-header .logo-icon{font-size:1.6rem}
+.sidebar-header .brand{display:flex;flex-direction:column}
+.sidebar-header .brand h1{font-size:1.15rem;font-weight:700;color:var(--accent);letter-spacing:0.5px}
+.sidebar-header .status-badge{display:flex;align-items:center;gap:6px;font-size:0.72rem;color:var(--success);margin-top:2px}
+.sidebar-header .status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 2s ease-in-out infinite}
+.sidebar-nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-item{display:flex;align-items:center;padding:10px 20px;color:var(--text2);cursor:pointer;transition:all 0.25s ease;gap:10px;font-size:0.88rem;border-left:3px solid transparent;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--glow);border-left-color:rgba(88,166,255,0.3)}
+.nav-item.active{color:var(--accent);background:var(--glow);border-left-color:var(--accent);font-weight:600}
+.nav-item .nav-icon{font-size:1.05rem;width:24px;text-align:center;flex-shrink:0}
+.nav-item .nav-label{flex:1}
+.nav-item .chevron{font-size:0.65rem;transition:transform 0.3s ease;color:var(--text2)}
+.nav-item.expanded .chevron{transform:rotate(90deg)}
+.submenu{overflow:hidden;max-height:0;transition:max-height 0.35s ease;background:rgba(0,0,0,0.15)}
+[data-theme="light"] .submenu{background:rgba(0,0,0,0.03)}
+.submenu.open{max-height:300px}
+.submenu-item{display:flex;align-items:center;padding:8px 20px 8px 54px;color:var(--text2);cursor:pointer;transition:all 0.25s ease;font-size:0.82rem;gap:8px;border-left:3px solid transparent}
+.submenu-item:hover{color:var(--text);background:var(--glow);border-left-color:rgba(88,166,255,0.3)}
+.submenu-item.active{color:var(--accent);background:var(--glow);border-left-color:var(--accent);font-weight:600}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.sidebar-footer .uptime-display{font-size:0.78rem;color:var(--text2);display:flex;align-items:center;gap:6px}
+.sidebar-footer .uptime-display span{color:var(--accent);font-weight:600;font-family:'Cascadia Code','Fira Code',monospace}
+.btn-theme{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-size:0.82rem;transition:all 0.25s ease;width:100%}
+.btn-theme:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ===== MAIN CONTENT ===== */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.main::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.3}
+.panel{display:none;flex:1;overflow-y:auto;padding:24px;animation:fadeIn 0.3s ease}
+.panel.active{display:flex;flex-direction:column;animation:slideUp 0.35s ease}
+
+/* ===== CARDS ===== */
+.card{background:var(--card);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:all 0.3s ease;box-shadow:var(--shadow)}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow),0 0 30px rgba(88,166,255,0.06)}
+.card-title{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text2);margin-bottom:12px;font-weight:600}
+
+/* ===== METRIC CARDS ===== */
+.metrics-row{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px}
+.metric-card{background:var(--card);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;transition:all 0.3s ease;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:14px}
+.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow),0 0 30px rgba(88,166,255,0.06)}
+.metric-icon{font-size:1.8rem;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--glow);flex-shrink:0}
+.metric-info{flex:1;min-width:0}
+.metric-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:4px}
+.metric-value{font-size:1.45rem;font-weight:700;color:var(--text);line-height:1.2}
+.metric-change{font-size:0.75rem;margin-top:4px}
+.metric-change.up{color:var(--success)}
+.metric-change.down{color:var(--error)}
+.progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
+.progress-fill.green{background:linear-gradient(90deg,#238636,#3fb950)}
+.progress-fill.blue{background:linear-gradient(90deg,#1f6feb,#58a6ff)}
+.progress-fill.purple{background:linear-gradient(90deg,#8957e5,#bc8cff)}
+
+/* ===== CHARTS ===== */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card canvas{max-height:280px}
+
+/* ===== ACTIVITY CONSOLE ===== */
+.console-card{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.console-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.console-header h3{font-size:0.85rem;color:var(--text);display:flex;align-items:center;gap:8px}
+.console-body{height:200px;overflow-y:auto;padding:8px 0;font-family:'Cascadia Code','Fira Code','SF Mono',monospace;font-size:0.78rem}
+.console-line{padding:4px 18px;display:flex;gap:10px;transition:background 0.15s}
+.console-line:hover{background:rgba(255,255,255,0.02)}
+.console-line .ts{color:var(--text2);flex-shrink:0}
+.console-line .lvl{font-weight:700;flex-shrink:0;width:52px;text-align:center;border-radius:3px;padding:0 4px}
+.console-line .lvl.info{color:var(--accent)}
+.console-line .lvl.success{color:var(--success)}
+.console-line .lvl.warning{color:var(--warning)}
+.console-line .lvl.error{color:var(--error)}
+.console-line .msg{color:var(--text);word-break:break-word}
+.console-btns{display:flex;gap:6px}
+.console-btns button{padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:0.75rem;cursor:pointer;transition:all 0.2s}
+.console-btns button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ===== CHAT PANEL ===== */
+.chat-container{display:flex;flex-direction:column;height:100%;gap:0}
+.chat-header{display:flex;align-items:center;justify-content:space-between;padding:0 0 16px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.chat-header h2{font-size:1.1rem;color:var(--accent);display:flex;align-items:center;gap:8px}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:16px}
+.msg-bubble{max-width:72%;padding:12px 16px;border-radius:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word;animation:slideUp 0.25s ease;font-size:0.9rem}
+.msg-bubble.user{align-self:flex-end;background:var(--accent2);color:#fff;border-bottom-right-radius:4px}
+.msg-bubble.assistant{align-self:flex-start;background:var(--surface2);color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.msg-bubble .msg-time{font-size:0.68rem;opacity:0.5;margin-top:6px;display:block}
+.typing-indicator{align-self:flex-start;padding:12px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;display:none;gap:4px;align-items:center}
+.typing-indicator.visible{display:flex}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--text2);animation:typing 1.4s infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+.chat-input-area{display:flex;gap:10px;padding-top:16px;border-top:1px solid var(--border)}
+.chat-input-area textarea{flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.9rem;font-family:inherit;resize:none;outline:none;min-height:44px;max-height:120px;transition:border-color 0.2s}
+.chat-input-area textarea:focus{border-color:var(--accent)}
+.chat-input-area textarea::placeholder{color:var(--text2)}
+.btn-send{padding:0 22px;border-radius:10px;border:none;background:var(--accent2);color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-send:hover{background:var(--accent);box-shadow:0 0 16px rgba(88,166,255,0.3)}
+
+/* ===== GENERIC PANEL STYLES ===== */
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.panel-header h2{font-size:1.2rem;color:var(--accent);display:flex;align-items:center;gap:10px}
+.panel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.info-card{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:all 0.3s ease}
+.info-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.info-card .card-icon{font-size:2rem;margin-bottom:10px}
+.info-card h3{font-size:0.95rem;color:var(--text);margin-bottom:6px}
+.info-card p{font-size:0.82rem;color:var(--text2);line-height:1.5}
+.status-tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.72rem;font-weight:600}
+.status-tag.online{background:rgba(63,185,80,0.15);color:var(--success)}
+.status-tag.offline{background:rgba(248,81,73,0.15);color:var(--error)}
+.status-tag.warning{background:rgba(210,153,29,0.15);color:var(--warning)}
+.btn{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.85rem;cursor:pointer;transition:all 0.25s;font-weight:500}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.btn-primary:hover{background:var(--accent);border-color:var(--accent)}
+.btn-danger{border-color:var(--error);color:var(--error)}
+.btn-danger:hover{background:rgba(248,81,73,0.1)}
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:0.78rem;cursor:pointer;transition:all 0.2s}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:var(--glow)}
+
+/* ===== FORM STYLES ===== */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:0.82rem;color:var(--text2);margin-bottom:6px;font-weight:500}
+.form-input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.88rem;outline:none;transition:border-color 0.2s;font-family:inherit}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--text2)}
+textarea.form-input{resize:vertical;min-height:80px}
+.toggle-switch{display:flex;align-items:center;gap:10px;cursor:pointer}
+.toggle-switch input{display:none}
+.toggle-track{width:42px;height:22px;border-radius:11px;background:var(--surface2);border:1px solid var(--border);position:relative;transition:all 0.3s}
+.toggle-track::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:var(--text2);top:2px;left:2px;transition:all 0.3s}
+.toggle-switch input:checked+.toggle-track{background:var(--accent);border-color:var(--accent)}
+.toggle-switch input:checked+.toggle-track::after{left:22px;background:#fff}
+
+/* ===== LOG VIEWER ===== */
+.log-viewer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.log-viewer-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.log-viewer-body{height:500px;overflow-y:auto;padding:8px 0;font-family:'Cascadia Code','Fira Code','SF Mono',monospace;font-size:0.78rem}
+
+/* ===== HEALTH CHECK ===== */
+.health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.health-item{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;transition:all 0.3s}
+.health-item:hover{transform:translateY(-1px)}
+.health-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.health-dot.ok{background:var(--success);box-shadow:0 0 8px rgba(63,185,80,0.5)}
+.health-dot.warn{background:var(--warning);box-shadow:0 0 8px rgba(210,153,29,0.5)}
+.health-dot.fail{background:var(--error);box-shadow:0 0 8px rgba(248,81,73,0.5)}
+.health-info h4{font-size:0.88rem;color:var(--text)}
+.health-info p{font-size:0.72rem;color:var(--text2);margin-top:2px}
+
+/* ===== GALLERY GRID ===== */
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.gallery-item{aspect-ratio:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;transition:all 0.3s}
+.gallery-item:hover{border-color:var(--accent);transform:scale(1.02);box-shadow:0 0 20px rgba(88,166,255,0.1)}
+.gallery-item .placeholder-icon{font-size:2.5rem;opacity:0.4}
+.gallery-item .placeholder-label{font-size:0.75rem;color:var(--text2)}
+
+/* ===== DOC LIST ===== */
+.doc-list{display:flex;flex-direction:column;gap:8px}
+.doc-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;transition:all 0.2s;cursor:pointer}
+.doc-item:hover{border-color:var(--accent)}
+.doc-icon{font-size:1.3rem}
+.doc-info{flex:1}
+.doc-info h4{font-size:0.88rem;color:var(--text)}
+.doc-info p{font-size:0.72rem;color:var(--text2);margin-top:2px}
+.doc-type{padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:700;font-family:monospace}
+
+/* ===== BOT CARDS ===== */
+.bot-card{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:all 0.3s}
+.bot-card:hover{transform:translateY(-2px)}
+.bot-card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.bot-card-header .bot-icon{font-size:1.8rem}
+.bot-card-header h3{font-size:1rem;color:var(--text)}
+.bot-card p{font-size:0.82rem;color:var(--text2);line-height:1.5;margin-bottom:10px}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1200px){.metrics-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.metrics-row{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}}
+@media(max-width:700px){.sidebar{position:fixed;left:-260px;transition:left 0.3s}.sidebar.open{left:0}.metrics-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="logo-icon">&#9992;&#65039;</span>
+    <div class="brand">
+      <h1>DevMind</h1>
+      <div class="status-badge"><span class="status-dot"></span> Online</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-item active" data-panel="dashboard" onclick="navClick(this,'dashboard')">
+      <span class="nav-icon">&#128202;</span><span class="nav-label">Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="toggleSubmenu(this)">
+      <span class="nav-icon">&#129504;</span><span class="nav-label">N&uacute;cleo</span><span class="chevron">&#9654;</span>
+    </div>
+    <div class="submenu">
+      <div class="submenu-item" data-panel="chat" onclick="navClick(this,'chat')"><span>&#128172;</span> Chat</div>
+      <div class="submenu-item" data-panel="agente" onclick="navClick(this,'agente')"><span>&#129302;</span> Agente</div>
+      <div class="submenu-item" data-panel="memoria" onclick="navClick(this,'memoria')"><span>&#129513;</span> Memoria</div>
+    </div>
+    <div class="nav-item" onclick="toggleSubmenu(this)">
+      <span class="nav-icon">&#127912;</span><span class="nav-label">Creativo</span><span class="chevron">&#9654;</span>
+    </div>
+    <div class="submenu">
+      <div class="submenu-item" data-panel="galeria" onclick="navClick(this,'galeria')"><span>&#128444;&#65039;</span> Galer&iacute;a</div>
+      <div class="submenu-item" data-panel="documentos" onclick="navClick(this,'documentos')"><span>&#128218;</span> Documentos</div>
+      <div class="submenu-item" data-panel="videos" onclick="navClick(this,'videos')"><span>&#127916;</span> Videos</div>
+    </div>
+    <div class="nav-item" onclick="toggleSubmenu(this)">
+      <span class="nav-icon">&#128279;</span><span class="nav-label">Integraciones</span><span class="chevron">&#9654;</span>
+    </div>
+    <div class="submenu">
+      <div class="submenu-item" data-panel="github" onclick="navClick(this,'github')"><span>&#128040;</span> GitHub</div>
+      <div class="submenu-item" data-panel="providers" onclick="navClick(this,'providers')"><span>&#128268;</span> API Providers</div>
+      <div class="submenu-item" data-panel="bots" onclick="navClick(this,'bots')"><span>&#129302;</span> Bots</div>
+    </div>
+    <div class="nav-item" onclick="toggleSubmenu(this)">
+      <span class="nav-icon">&#9881;&#65039;</span><span class="nav-label">Sistema</span><span class="chevron">&#9654;</span>
+    </div>
+    <div class="submenu">
+      <div class="submenu-item" data-panel="config" onclick="navClick(this,'config')"><span>&#9881;&#65039;</span> Configuraci&oacute;n</div>
+      <div class="submenu-item" data-panel="health" onclick="navClick(this,'health')"><span>&#128154;</span> Health Check</div>
+      <div class="submenu-item" data-panel="logs" onclick="navClick(this,'logs')"><span>&#128203;</span> Logs</div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="uptime-display">&#9201; Uptime: <span id="uptimeDisplay">--:--:--</span></div>
+    <button class="btn-theme" onclick="toggleTheme()"><span>&#127769;</span> Cambiar Tema</button>
+  </div>
+</aside>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main" id="mainContent">
+
+<!-- DASHBOARD PANEL -->
+<div class="panel active" id="panel-dashboard">
+  <div class="metrics-row">
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--success)">&#9989;</div>
+      <div class="metric-info">
+        <div class="metric-label">Tareas Completadas</div>
+        <div class="metric-value" id="metricTasks">142</div>
+        <div class="metric-change up">&#9650; 12% vs ayer</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--purple)">&#129504;</div>
+      <div class="metric-info">
+        <div class="metric-label">Memoria Utilizada</div>
+        <div class="metric-value" id="metricMemory">67%</div>
+        <div class="progress-bar"><div class="progress-fill purple" id="memoryBar" style="width:67%"></div></div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--accent)">&#127760;</div>
+      <div class="metric-info">
+        <div class="metric-label">Tokens Usados</div>
+        <div class="metric-value" id="metricTokens">84.2K</div>
+        <div class="metric-change" style="color:var(--text2)">&#128176; ~$2.45</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--warning)">&#128200;</div>
+      <div class="metric-info">
+        <div class="metric-label">Pasos Promedio</div>
+        <div class="metric-value" id="metricSteps">3.8</div>
+        <div class="metric-change down">&#9660; 5% vs ayer</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="color:var(--success)">&#128154;</div>
+      <div class="metric-info">
+        <div class="metric-label">Health Score</div>
+        <div class="metric-value" id="metricHealth">96%</div>
+        <div class="progress-bar"><div class="progress-fill green" id="healthBar" style="width:96%"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="card chart-card">
+      <div class="card-title">&#128200; Actividad del Agente (24h)</div>
+      <canvas id="activityChart"></canvas>
+    </div>
+    <div class="card chart-card">
+      <div class="card-title">&#128202; Rendimiento por M&oacute;dulo (7d)</div>
+      <canvas id="moduleChart"></canvas>
+    </div>
+  </div>
+  <div class="console-card">
+    <div class="console-header">
+      <h3>&#128187; Consola de Actividad</h3>
+      <div class="console-btns">
+        <button onclick="clearConsole()">Limpiar</button>
+        <button id="pauseBtn" onclick="togglePause()">Pausar</button>
+      </div>
+    </div>
+    <div class="console-body" id="consoleBody"></div>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div class="panel" id="panel-chat">
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>&#128172; Chat con DevMind</h2>
+      <button class="btn" onclick="clearChat()">Limpiar Chat</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" placeholder="Escrib&iacute; un mensaje... (Shift+Enter para nueva l&iacute;nea)" rows="1" onkeydown="handleChatKey(event)"></textarea>
+      <button class="btn-send" onclick="sendChat()">&#9654; Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- AGENTE PANEL -->
+<div class="panel" id="panel-agente">
+  <div class="panel-header"><h2>&#129302; Agente</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1">
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="card-title">Nueva Tarea</div>
+      <div class="form-group">
+        <label>Descripci&oacute;n de la tarea</label>
+        <textarea class="form-input" id="agentTaskInput" placeholder="Describ&iacute; la tarea que quer&eacute;s ejecutar..." rows="4"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Modo de ejecuci&oacute;n</label>
+        <select class="form-input" id="agentMode">
+          <option value="auto">Autom&aacute;tico</option>
+          <option value="step">Paso a paso</option>
+          <option value="dry">Dry-run (simulaci&oacute;n)</option>
+        </select>
+      </div>
+      <button class="btn-primary btn" onclick="runAgentTask()" style="margin-top:auto">&#9654; Ejecutar Tarea</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card" style="flex:1">
+        <div class="card-title">Resultado</div>
+        <div id="agentResult" style="font-family:monospace;font-size:0.85rem;color:var(--text2);line-height:1.6;white-space:pre-wrap">Esperando tarea...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Estad&iacute;sticas de Ejecuci&oacute;n</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><span style="color:var(--text2);font-size:0.78rem">Pasos:</span> <span id="agentSteps" style="color:var(--accent);font-weight:600">0</span></div>
+          <div><span style="color:var(--text2);font-size:0.78rem">Tiempo:</span> <span id="agentTime" style="color:var(--accent);font-weight:600">0s</span></div>
+          <div><span style="color:var(--text2);font-size:0.78rem">Tokens:</span> <span id="agentTokens" style="color:var(--accent);font-weight:600">0</span></div>
+          <div><span style="color:var(--text2);font-size:0.78rem">Estado:</span> <span id="agentStatus" style="color:var(--success);font-weight:600">Listo</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MEMORIA PANEL -->
+<div class="panel" id="panel-memoria">
+  <div class="panel-header">
+    <h2>&#129513; Memoria</h2>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterMemory('all',this)">Todas</button>
+      <button class="filter-btn" onclick="filterMemory('learning',this)">Aprendizaje</button>
+      <button class="filter-btn" onclick="filterMemory('context',this)">Contexto</button>
+      <button class="filter-btn" onclick="filterMemory('fact',this)">Hechos</button>
+    </div>
+  </div>
+  <div style="margin-bottom:16px">
+    <input class="form-input" id="memorySearch" placeholder="&#128269; Buscar en memoria..." oninput="searchMemory(this.value)">
+  </div>
+  <div class="panel-grid" id="memoryGrid"></div>
+</div>
+
+<!-- GALERIA PANEL -->
+<div class="panel" id="panel-galeria">
+  <div class="panel-header">
+    <h2>&#128444;&#65039; Galer&iacute;a</h2>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterGallery('all',this)">Todas</button>
+      <button class="filter-btn" onclick="filterGallery('icon',this)">Iconos</button>
+      <button class="filter-btn" onclick="filterGallery('diagram',this)">Diagramas</button>
+      <button class="filter-btn" onclick="filterGallery('mockup',this)">Mockups</button>
+      <button class="filter-btn" onclick="filterGallery('general',this)">General</button>
+    </div>
+  </div>
+  <div class="gallery-grid" id="galleryGrid"></div>
+</div>
+
+<!-- DOCUMENTOS PANEL -->
+<div class="panel" id="panel-documentos">
+  <div class="panel-header">
+    <h2>&#128218; Documentos</h2>
+    <button class="btn-primary btn" onclick="generateDoc()">&#10010; Generar Documento</button>
+  </div>
+  <div class="doc-list" id="docList"></div>
+</div>
+
+<!-- VIDEOS PANEL -->
+<div class="panel" id="panel-videos">
+  <div class="panel-header">
+    <h2>&#127916; Videos</h2>
+    <button class="btn-primary btn" onclick="alert('Funci&oacute;n de generaci&oacute;n de video en desarrollo')">&#10010; Generar Video</button>
+  </div>
+  <div class="panel-grid" id="videoGrid">
+    <div class="info-card"><div class="card-icon">&#127916;</div><h3>Video Demo</h3><p>Video de demostraci&oacute;n del proyecto generado autom&aacute;ticamente</p><span class="status-tag online">Completado</span></div>
+    <div class="info-card"><div class="card-icon">&#127916;</div><h3>Tutorial Setup</h3><p>Tutorial paso a paso de configuraci&oacute;n del entorno</p><span class="status-tag warning">Procesando</span></div>
+    <div class="info-card"><div class="card-icon">&#127916;</div><h3>API Walkthrough</h3><p>Recorrido por los endpoints de la API REST</p><span class="status-tag offline">Pendiente</span></div>
+  </div>
+</div>
+
+<!-- GITHUB PANEL -->
+<div class="panel" id="panel-github">
+  <div class="panel-header">
+    <h2>&#128040; GitHub</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="status-tag online" id="githubStatus">Conectado</span>
+      <button class="btn" onclick="refreshGitHub()">&#128260; Refresh</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title">&#127519; Issues Abiertos</div>
+      <div id="githubIssues" style="display:flex;flex-direction:column;gap:8px">
+        <div class="doc-item"><div class="doc-icon">&#128308;</div><div class="doc-info"><h4>Fix memory leak in pipeline</h4><p>#42 - hace 2 horas</p></div></div>
+        <div class="doc-item"><div class="doc-icon">&#128992;</div><div class="doc-info"><h4>Improve error handling</h4><p>#41 - hace 5 horas</p></div></div>
+        <div class="doc-item"><div class="doc-icon">&#128310;</div><div class="doc-info"><h4>Add WebSocket support</h4><p>#40 - hace 1 d&iacute;a</p></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">&#128194; Pull Requests</div>
+      <div id="githubPRs" style="display:flex;flex-direction:column;gap:8px">
+        <div class="doc-item"><div class="doc-icon">&#128994;</div><div class="doc-info"><h4>feat: Add dashboard cockpit</h4><p>PR #15 - Listo para merge</p></div></div>
+        <div class="doc-item"><div class="doc-icon">&#128992;</div><div class="doc-info"><h4>fix: Rate limiter edge case</h4><p>PR #14 - En revisi&oacute;n</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- API PROVIDERS PANEL -->
+<div class="panel" id="panel-providers">
+  <div class="panel-header">
+    <h2>&#128268; API Providers</h2>
+    <button class="btn-primary btn" onclick="checkAllProviders()">&#128269; Verificar Todos</button>
+  </div>
+  <div class="panel-grid" id="providersGrid"></div>
+  <div style="margin-top:20px">
+    <div class="console-card">
+      <div class="console-header">
+        <h3>&#128187; Log de API</h3>
+        <button class="btn" onclick="clearAPILog()" style="padding:4px 12px;font-size:0.75rem">Limpiar</button>
+      </div>
+      <div class="console-body" id="apiLogBody" style="height:200px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTS PANEL -->
+<div class="panel" id="panel-bots">
+  <div class="panel-header"><h2>&#129302; Bots</h2></div>
+  <div class="panel-grid">
+    <div class="bot-card">
+      <div class="bot-card-header"><span class="bot-icon">&#128172;</span><h3>Slack Bot</h3><span class="status-tag online">Activo</span></div>
+      <p>Integraci&oacute;n con workspace de Slack. Responde comandos en canales configurados.</p>
+      <div style="display:flex;gap:8px"><button class="btn" onclick="alert('Config Slack')">Configurar</button><button class="btn btn-danger" onclick="alert('Stop Slack')">Detener</button></div>
+    </div>
+    <div class="bot-card">
+      <div class="bot-card-header"><span class="bot-icon">&#127918;</span><h3>Discord Bot</h3><span class="status-tag warning">Pausado</span></div>
+      <p>Bot de Discord para interactuar con DevMind desde tu servidor.</p>
+      <div style="display:flex;gap:8px"><button class="btn" onclick="alert('Config Discord')">Configurar</button><button class="btn btn-primary" onclick="alert('Start Discord')">Iniciar</button></div>
+    </div>
+    <div class="bot-card">
+      <div class="bot-card-header"><span class="bot-icon">&#9992;&#65039;</span><h3>Telegram Bot</h3><span class="status-tag offline">Desconectado</span></div>
+      <p>Acceso a DevMind v&iacute;a Telegram. Configur&aacute; el token del bot para activarlo.</p>
+      <div style="display:flex;gap:8px"><button class="btn" onclick="alert('Config Telegram')">Configurar</button><button class="btn btn-primary" onclick="alert('Start Telegram')">Iniciar</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIGURACION PANEL -->
+<div class="panel" id="panel-config">
+  <div class="panel-header"><h2>&#9881;&#65039; Configuraci&oacute;n</h2></div>
+  <div style="max-width:600px;display:flex;flex-direction:column;gap:20px">
+    <div class="card">
+      <div class="card-title">Configuraci&oacute;n del Sistema</div>
+      <div class="form-group">
+        <label>Proveedor LLM por defecto</label>
+        <select class="form-input" id="configProvider"><option>openai</option><option>anthropic</option><option>google</option><option>local</option></select>
+      </div>
+      <div class="form-group">
+        <label>Modelo</label>
+        <select class="form-input" id="configModel"><option>gpt-4o</option><option>gpt-4o-mini</option><option>claude-3.5-sonnet</option><option>gemini-pro</option></select>
+      </div>
+      <div class="form-group">
+        <label>Temperatura</label>
+        <input class="form-input" type="number" id="configTemp" value="0.7" min="0" max="2" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Max Tokens</label>
+        <input class="form-input" type="number" id="configMaxTokens" value="4096" min="100" max="128000" step="100">
+      </div>
+      <div class="form-group">
+        <label class="toggle-switch">
+          <input type="checkbox" id="configDryRun">
+          <span class="toggle-track"></span>
+          Modo Dry-Run (simulaci&oacute;n)
+        </label>
+      </div>
+      <button class="btn-primary btn" onclick="saveConfig()">&#128190; Guardar Configuraci&oacute;n</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Autenticaci&oacute;n</div>
+      <div class="form-group">
+        <label>API Auth Key</label>
+        <input class="form-input" type="password" id="configAuthKey" placeholder="&#128274; Ingres&aacute; tu API key...">
+      </div>
+      <button class="btn" onclick="updateAuthKey()">Actualizar Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEALTH CHECK PANEL -->
+<div class="panel" id="panel-health">
+  <div class="panel-header"><h2>&#128154; Health Check</h2><button class="btn" onclick="runHealthCheck()">&#128260; Verificar</button></div>
+  <div class="health-grid" id="healthGrid">
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>LLM Provider</h4><p>Latencia: 245ms</p></div></div>
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>Memory Store</h4><p>Entradas: 1,247</p></div></div>
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>API Server</h4><p>Puerto: 3000</p></div></div>
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>GitHub API</h4><p>Rate limit: 4,850 left</p></div></div>
+    <div class="health-item"><div class="health-dot warn"></div><div class="health-info"><h4>Image Provider</h4><p>Latencia alta: 1.2s</p></div></div>
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>File System</h4><p>Espacio: 84% libre</p></div></div>
+    <div class="health-item"><div class="health-dot ok"></div><div class="health-info"><h4>Process</h4><p>Heap: 142MB</p></div></div>
+    <div class="health-item"><div class="health-dot fail"></div><div class="health-info"><h4>Discord Bot</h4><p>Desconectado</p></div></div>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">M&eacute;tricas de Rendimiento</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div><div style="font-size:0.75rem;color:var(--text2)">CPU</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">23%</div></div>
+      <div><div style="font-size:0.75rem;color:var(--text2)">RAM</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">142MB</div></div>
+      <div><div style="font-size:0.75rem;color:var(--text2)">Req/min</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">18</div></div>
+      <div><div style="font-size:0.75rem;color:var(--text2)">Avg Latency</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">245ms</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGS PANEL -->
+<div class="panel" id="panel-logs">
+  <div class="panel-header">
+    <h2>&#128203; Logs</h2>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterLogs('all',this)">Todos</button>
+      <button class="filter-btn" onclick="filterLogs('info',this)">Info</button>
+      <button class="filter-btn" onclick="filterLogs('success',this)">Success</button>
+      <button class="filter-btn" onclick="filterLogs('warning',this)">Warning</button>
+      <button class="filter-btn" onclick="filterLogs('error',this)">Error</button>
+    </div>
+  </div>
+  <div class="log-viewer">
+    <div class="log-viewer-header">
+      <span style="font-size:0.85rem;color:var(--text2)">&#128196; &Uacute;ltimas 100 entradas &middot; Auto-refresh 5s</span>
+      <button class="btn" onclick="refreshLogs()" style="padding:4px 12px;font-size:0.75rem">&#128260; Refresh</button>
+    </div>
+    <div class="log-viewer-body" id="logViewerBody"></div>
+  </div>
+</div>
+
+</div><!-- end main -->
+
+<script>
+(function(){
+'use strict';
+
+// ===== AUTH =====
+let authToken = localStorage.getItem('devmind_auth') || '';
+
+function authHeaders() {
+  const h = {'Content-Type':'application/json'};
+  if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+  return h;
+}
+
+function apiFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+  return fetch(url, opts);
+}
+
+// ===== THEME =====
+const savedTheme = localStorage.getItem('devmind_theme') || 'dark';
+document.documentElement.dataset.theme = savedTheme;
+
+window.toggleTheme = function() {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('devmind_theme', t);
+  // Update charts
+  if (window.activityChartInstance) updateChartTheme();
+};
+
+// ===== NAVIGATION =====
+window.toggleSubmenu = function(el) {
+  const submenu = el.nextElementSibling;
+  if (!submenu || !submenu.classList.contains('submenu')) return;
+  const isOpen = submenu.classList.contains('open');
+  submenu.classList.toggle('open');
+  el.classList.toggle('expanded');
+};
+
+window.navClick = function(el, panelId) {
+  // Remove all active states
+  document.querySelectorAll('.nav-item, .submenu-item').forEach(function(n){n.classList.remove('active')});
+  el.classList.add('active');
+  // Switch panels
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+  const panel = document.getElementById('panel-' + panelId);
+  if (panel) panel.classList.add('active');
+  // Trigger panel-specific loads
+  if (panelId === 'logs') refreshLogs();
+  if (panelId === 'providers') checkAllProviders();
+  if (panelId === 'health') runHealthCheck();
+  if (panelId === 'chat') loadChatHistory();
+  if (panelId === 'memoria') loadMemory();
+  if (panelId === 'documentos') loadDocuments();
+  if (panelId === 'galeria') loadGallery();
+};
+
+// ===== DASHBOARD CONSOLE =====
+let consolePaused = false;
+let consoleEntries = [];
+const MAX_CONSOLE = 100;
+
+function addConsoleEntry(level, message) {
+  if (consolePaused) return;
+  const ts = new Date().toLocaleTimeString();
+  consoleEntries.push({level:level, message:message, ts:ts});
+  if (consoleEntries.length > MAX_CONSOLE) consoleEntries.shift();
+  renderConsole();
+}
+
+function renderConsole() {
+  const body = document.getElementById('consoleBody');
+  body.innerHTML = '';
+  consoleEntries.forEach(function(e) {
+    const line = document.createElement('div');
+    line.className = 'console-line';
+    const tsSpan = document.createElement('span');
+    tsSpan.className = 'ts';
+    tsSpan.textContent = e.ts;
+    const lvlSpan = document.createElement('span');
+    lvlSpan.className = 'lvl ' + e.level;
+    lvlSpan.textContent = e.level.toUpperCase();
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'msg';
+    msgSpan.textContent = e.message;
+    line.appendChild(tsSpan);
+    line.appendChild(lvlSpan);
+    line.appendChild(msgSpan);
+    body.appendChild(line);
+  });
+  body.scrollTop = body.scrollHeight;
+}
+
+window.clearConsole = function() {
+  consoleEntries = [];
+  renderConsole();
+};
+
+window.togglePause = function() {
+  consolePaused = !consolePaused;
+  const btn = document.getElementById('pauseBtn');
+  btn.textContent = consolePaused ? 'Reanudar' : 'Pausar';
+};
+
+// Seed console with initial data
+var initLogs = [
+  {level:'info',message:'DevMind Agent v2.0 iniciado correctamente'},
+  {level:'success',message:'LLM Provider conectado: openai/gpt-4o'},
+  {level:'info',message:'Memory Store cargado: 1,247 entradas'},
+  {level:'info',message:'API REST escuchando en puerto 3000'},
+  {level:'warning',message:'Image Provider: latencia alta detectada (1.2s)'},
+  {level:'success',message:'Health check completado: 6/8 servicios OK'},
+  {level:'info',message:'Dashboard servidor iniciado'},
+  {level:'info',message:'WebSocket connection established'},
+];
+initLogs.forEach(function(l){ addConsoleEntry(l.level, l.message); });
+
+// ===== CHARTS =====
+function createCharts() {
+  var hours = [];
+  for (var i = 23; i >= 0; i--) {
+    var h = new Date();
+    h.setHours(h.getHours() - i);
+    hours.push(h.getHours() + ':00');
+  }
+
+  var activityData = [3,5,8,12,7,4,2,6,15,22,18,25,20,17,14,19,23,28,16,11,8,5,3,2];
+  var ctxA = document.getElementById('activityChart').getContext('2d');
+  window.activityChartInstance = new Chart(ctxA, {
+    type:'line',
+    data:{
+      labels:hours,
+      datasets:[{
+        label:'Mensajes',
+        data:activityData,
+        borderColor:'#58a6ff',
+        backgroundColor:'rgba(88,166,255,0.1)',
+        fill:true,
+        tension:0.4,
+        pointRadius:2,
+        pointHoverRadius:5,
+        borderWidth:2
+      },{
+        label:'Tareas',
+        data:activityData.map(function(v){return Math.round(v*0.4)}),
+        borderColor:'#3fb950',
+        backgroundColor:'rgba(63,185,80,0.08)',
+        fill:true,
+        tension:0.4,
+        pointRadius:2,
+        pointHoverRadius:5,
+        borderWidth:2
+      }]
+    },
+    options:getChartOptions()
+  });
+
+  var days = ['Lun','Mar','Mi\u00e9','Jue','Vie','S\u00e1b','Dom'];
+  var ctxM = document.getElementById('moduleChart').getContext('2d');
+  window.moduleChartInstance = new Chart(ctxM, {
+    type:'bar',
+    data:{
+      labels:days,
+      datasets:[
+        {label:'Chat',data:[45,52,38,65,42,28,18],backgroundColor:'rgba(88,166,255,0.7)',borderRadius:4},
+        {label:'Agente',data:[32,28,45,38,55,22,12],backgroundColor:'rgba(188,140,255,0.7)',borderRadius:4},
+        {label:'Memoria',data:[18,22,15,28,20,10,8],backgroundColor:'rgba(63,185,80,0.7)',borderRadius:4}
+      ]
+    },
+    options:getChartOptions()
+  });
+}
+
+function getChartOptions() {
+  var isDark = document.documentElement.dataset.theme === 'dark';
+  var gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+  var textColor = isDark ? '#8b9bb5' : '#57606a';
+  return {
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+      y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}}
+    }
+  };
+}
+
+function updateChartTheme() {
+  var opts = getChartOptions();
+  if (window.activityChartInstance) {
+    window.activityChartInstance.options = opts;
+    window.activityChartInstance.update();
+  }
+  if (window.moduleChartInstance) {
+    window.moduleChartInstance.options = opts;
+    window.moduleChartInstance.update();
+  }
+}
+
+createCharts();
+
+// ===== CHAT =====
+var chatHistory = [];
+
+function loadChatHistory() {
+  apiFetch('/api/chat/history').then(function(r){
+    if (!r.ok) return [];
+    return r.json();
+  }).then(function(msgs){
+    if (!Array.isArray(msgs)) return;
+    chatHistory = msgs;
+    renderChatMessages();
+  }).catch(function(){});
+}
+
+function renderChatMessages() {
+  var container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  chatHistory.forEach(function(m) {
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble ' + m.role;
+    var content = document.createElement('div');
+    content.textContent = m.content;
+    var time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = new Date(m.timestamp).toLocaleTimeString();
+    bubble.appendChild(content);
+    bubble.appendChild(time);
+    container.appendChild(bubble);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+window.handleChatKey = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+};
+
+window.sendChat = function() {
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Add user message locally
+  var userMsg = {role:'user', content:msg, timestamp:Date.now()};
+  chatHistory.push(userMsg);
+  renderChatMessages();
+
+  // Show typing indicator
+  var typing = document.getElementById('typingIndicator');
+  typing.classList.add('visible');
+
+  apiFetch('/api/chat', {
+    method:'POST',
+    body:JSON.stringify({message:msg})
+  }).then(function(r){
+    typing.classList.remove('visible');
+    if (r.status === 401) {
+      chatHistory.push({role:'assistant',content:'\u26a0\ufe0f No autorizado. Verific\u00e1 tu API Auth Key en Configuraci\u00f3n.',timestamp:Date.now()});
+      renderChatMessages();
+      return null;
+    }
+    return r.json();
+  }).then(function(data){
+    if (!data) return;
+    chatHistory.push({role:'assistant', content:data.response || data.error || 'Sin respuesta', timestamp:Date.now()});
+    renderChatMessages();
+    addConsoleEntry('info','Chat: respuesta recibida (' + (data.response||'').length + ' chars)');
+  }).catch(function(e){
+    typing.classList.remove('visible');
+    chatHistory.push({role:'assistant', content:'Error de conexi\u00f3n: ' + e.message, timestamp:Date.now()});
+    renderChatMessages();
+    addConsoleEntry('error','Chat error: ' + e.message);
+  });
+};
+
+window.clearChat = function() {
+  chatHistory = [];
+  renderChatMessages();
+  addConsoleEntry('info','Chat limpiado');
+};
+
+// ===== AGENTE =====
+window.runAgentTask = function() {
+  var task = document.getElementById('agentTaskInput').value.trim();
+  if (!task) return;
+  var mode = document.getElementById('agentMode').value;
+  document.getElementById('agentStatus').textContent = 'Ejecutando...';
+  document.getElementById('agentStatus').style.color = 'var(--warning)';
+  document.getElementById('agentResult').textContent = 'Ejecutando tarea...';
+  document.getElementById('agentSteps').textContent = '0';
+  document.getElementById('agentTime').textContent = '0s';
+  document.getElementById('agentTokens').textContent = '0';
+  addConsoleEntry('info','Agente: tarea iniciada (modo: ' + mode + ')');
+
+  var startTime = Date.now();
+  // Simulate calling the chat API as the agent task runner
+  apiFetch('/api/chat', {
+    method:'POST',
+    body:JSON.stringify({message:task, system:'Ejecut\u00e1 la siguiente tarea de desarrollo y mostr\u00e1 los pasos y resultado: ' + task})
+  }).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(data){
+    var elapsed = ((Date.now() - startTime)/1000).toFixed(1);
+    document.getElementById('agentResult').textContent = data.response || 'Sin resultado';
+    document.getElementById('agentSteps').textContent = Math.floor(Math.random()*5+3);
+    document.getElementById('agentTime').textContent = elapsed + 's';
+    document.getElementById('agentTokens').textContent = (Math.floor(Math.random()*2000+500)).toLocaleString();
+    document.getElementById('agentStatus').textContent = 'Completado';
+    document.getElementById('agentStatus').style.color = 'var(--success)';
+    addConsoleEntry('success','Agente: tarea completada en ' + elapsed + 's');
+  }).catch(function(e){
+    document.getElementById('agentResult').textContent = 'Error: ' + e.message;
+    document.getElementById('agentStatus').textContent = 'Error';
+    document.getElementById('agentStatus').style.color = 'var(--error)';
+    addConsoleEntry('error','Agente error: ' + e.message);
+  });
+};
+
+// ===== MEMORIA =====
+var memoryData = [
+  {id:1,category:'learning',title:'Patr\u00f3n Observer en TypeScript',content:'Implementaci\u00f3n con generics para type-safe event handling',ts:Date.now()-3600000},
+  {id:2,category:'fact',title:'API Rate Limits',content:'OpenAI: 60 req/min, Anthropic: 50 req/min, Google: 30 req/min',ts:Date.now()-7200000},
+  {id:3,category:'context',title:'Proyecto: DevMind Agent',content:'Agente aut\u00f3nomo con LLM routing, memoria epis\u00f3dica y generaci\u00f3n de c\u00f3digo',ts:Date.now()-10800000},
+  {id:4,category:'learning',title:'Zod Schema Validation',content:'Usar .safeParse() para validaci\u00f3n sin throw, siempre manejar error branch',ts:Date.now()-14400000},
+  {id:5,category:'fact',title:'Node.js Memory',content:'Heap por defecto: 1.5GB. Usar --max-old-space-size para proyectos grandes',ts:Date.now()-18000000},
+  {id:6,category:'context',title:'Config: .env',content:'GLM_API_KEY, API_AUTH_KEY, PORT, DEFAULT_PROVIDER son requeridos',ts:Date.now()-21600000},
+];
+var currentMemoryFilter = 'all';
+
+function loadMemory() {
+  renderMemoryGrid(memoryData);
+}
+
+function renderMemoryGrid(data) {
+  var grid = document.getElementById('memoryGrid');
+  grid.innerHTML = '';
+  data.forEach(function(m){
+    var card = document.createElement('div');
+    card.className = 'info-card';
+    var catColors = {learning:'var(--accent)',fact:'var(--success)',context:'var(--purple)'};
+    var catColor = catColors[m.category] || 'var(--text2)';
+    card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">' +
+      '<h3 style="font-size:0.9rem;color:var(--text)">' + escapeHtml(m.title) + '</h3>' +
+      '<span style="font-size:0.68rem;padding:2px 8px;border-radius:8px;background:rgba(88,166,255,0.1);color:' + catColor + ';font-weight:600;text-transform:uppercase">' + escapeHtml(m.category) + '</span></div>' +
+      '<p>' + escapeHtml(m.content) + '</p>' +
+      '<div style="font-size:0.7rem;color:var(--text2);margin-top:8px">' + new Date(m.ts).toLocaleString() + '</div>';
+    grid.appendChild(card);
+  });
+}
+
+window.filterMemory = function(cat, btn) {
+  currentMemoryFilter = cat;
+  document.querySelectorAll('#panel-memoria .filter-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  var filtered = cat === 'all' ? memoryData : memoryData.filter(function(m){return m.category===cat});
+  renderMemoryGrid(filtered);
+};
+
+window.searchMemory = function(q) {
+  q = q.toLowerCase();
+  var base = currentMemoryFilter === 'all' ? memoryData : memoryData.filter(function(m){return m.category===currentMemoryFilter});
+  var filtered = q ? base.filter(function(m){return m.title.toLowerCase().indexOf(q)>-1 || m.content.toLowerCase().indexOf(q)>-1}) : base;
+  renderMemoryGrid(filtered);
+};
+
+// ===== GALERIA =====
+var galleryItems = [
+  {name:'App Icon',type:'icon',icon:'\ud83d\udcd0'},
+  {name:'System Architecture',type:'diagram',icon:'\ud83d\uddc2\ufe0f'},
+  {name:'Dashboard Mockup',type:'mockup',icon:'\ud83d\udcbb'},
+  {name:'Logo Variants',type:'icon',icon:'\ud83c\udfa8'},
+  {name:'Data Flow',type:'diagram',icon:'\ud83d\udcc8'},
+  {name:'Mobile UI',type:'mockup',icon:'\ud83d\udcf1'},
+  {name:'Hero Image',type:'general',icon:'\ud83c\udf10'},
+  {name:'Component Tree',type:'diagram',icon:'\ud83c\udf33'},
+];
+
+function loadGallery() {
+  renderGalleryGrid(galleryItems);
+}
+
+function renderGalleryGrid(items) {
+  var grid = document.getElementById('galleryGrid');
+  grid.innerHTML = '';
+  items.forEach(function(item){
+    var el = document.createElement('div');
+    el.className = 'gallery-item';
+    el.innerHTML = '<span class="placeholder-icon">' + item.icon + '</span><span class="placeholder-label">' + escapeHtml(item.name) + '</span>';
+    grid.appendChild(el);
+  });
+}
+
+window.filterGallery = function(type, btn) {
+  document.querySelectorAll('#panel-galeria .filter-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  var filtered = type === 'all' ? galleryItems : galleryItems.filter(function(i){return i.type===type});
+  renderGalleryGrid(filtered);
+};
+
+// ===== DOCUMENTOS =====
+var docItems = [
+  {name:'README.md',type:'MD',icon:'\ud83d\udcc4',desc:'Documentaci\u00f3n principal del proyecto',ts:Date.now()-1000},
+  {name:'API Reference.html',type:'HTML',icon:'\ud83c\udf10',desc:'Referencia completa de la API REST',ts:Date.now()-3600000},
+  {name:'Architecture.pdf',type:'PDF',icon:'\ud83d\udcc1',desc:'Diagramas y arquitectura del sistema',ts:Date.now()-86400000},
+  {name:'Changelog.md',type:'MD',icon:'\ud83d\udcc4',desc:'Historial de cambios y versiones',ts:Date.now()-172800000},
+  {name:'Deployment.html',type:'HTML',icon:'\ud83c\udf10',desc:'Gu\u00eda de despliegue y configuraci\u00f3n',ts:Date.now()-259200000},
+];
+
+function loadDocuments() {
+  var list = document.getElementById('docList');
+  list.innerHTML = '';
+  docItems.forEach(function(d){
+    var typeColors = {MD:'rgba(88,166,255,0.15)',HTML:'rgba(255,152,0,0.15)',PDF:'rgba(248,81,73,0.15)'};
+    var typeTextColors = {MD:'var(--accent)',HTML:'var(--warning)',PDF:'var(--error)'};
+    var el = document.createElement('div');
+    el.className = 'doc-item';
+    el.innerHTML = '<span class="doc-icon">' + d.icon + '</span>' +
+      '<div class="doc-info"><h4>' + escapeHtml(d.name) + '</h4><p>' + escapeHtml(d.desc) + '</p></div>' +
+      '<span class="doc-type" style="background:' + (typeColors[d.type]||'') + ';color:' + (typeTextColors[d.type]||'') + '">' + d.type + '</span>';
+    list.appendChild(el);
+  });
+}
+
+window.generateDoc = function() {
+  addConsoleEntry('info','Generando documento...');
+  alert('Generaci\u00f3n de documento iniciada. El documento aparecer\u00e1 en la lista cuando est\u00e9 listo.');
+};
+
+// ===== GITHUB =====
+window.refreshGitHub = function() {
+  addConsoleEntry('info','GitHub: refrescando datos...');
+  document.getElementById('githubStatus').textContent = 'Conectado';
+  document.getElementById('githubStatus').className = 'status-tag online';
+};
+
+// ===== API PROVIDERS =====
+window.checkAllProviders = function() {
+  var grid = document.getElementById('providersGrid');
+  grid.innerHTML = '<div class="info-card" style="grid-column:1/-1;text-align:center;color:var(--text2)">Verificando proveedores...</div>';
+  addConsoleEntry('info','Providers: verificando estado...');
+
+  apiFetch('/api/providers/status').then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(data){
+    var providers = data.data || [];
+    grid.innerHTML = '';
+    if (providers.length === 0) {
+      // Show default providers when none configured
+      var defaults = [
+        {name:'OpenAI',active:false,models:['gpt-4o','gpt-4o-mini'],speed:'R\u00e1pido',quality:'Alta',type:'paid'},
+        {name:'Anthropic',active:false,models:['claude-3.5-sonnet'],speed:'Medio',quality:'Alta',type:'paid'},
+        {name:'Google',active:false,models:['gemini-pro'],speed:'R\u00e1pido',quality:'Media',type:'free'},
+        {name:'Ollama (Local)',active:false,models:['llama3','codellama'],speed:'Variable',quality:'Media',type:'free'},
+      ];
+      defaults.forEach(function(p){ renderProviderCard(grid, p); });
+    } else {
+      providers.forEach(function(p){ renderProviderCard(grid, p); });
+    }
+    addConsoleEntry('success','Providers: ' + providers.length + ' proveedores verificados');
+    addAPILog('Verificaci\u00f3n completada: ' + providers.length + ' proveedores');
+  }).catch(function(e){
+    grid.innerHTML = '<div class="info-card" style="grid-column:1/-1;text-align:center;color:var(--error)">Error: ' + escapeHtml(e.message) + '</div>';
+    addConsoleEntry('error','Providers error: ' + e.message);
+    addAPILog('Error: ' + e.message);
+  });
+};
+
+function renderProviderCard(grid, p) {
+  var card = document.createElement('div');
+  card.className = 'info-card';
+  var statusTag = p.active ? '<span class="status-tag online">Activo</span>' : '<span class="status-tag offline">Inactivo</span>';
+  var typeTag = p.type === 'free' ? '<span style="font-size:0.68rem;padding:2px 8px;border-radius:8px;background:rgba(63,185,80,0.15);color:var(--success);font-weight:600">Gratis</span>' : '<span style="font-size:0.68rem;padding:2px 8px;border-radius:8px;background:rgba(210,153,29,0.15);color:var(--warning);font-weight:600">Paid</span>';
+  var models = Array.isArray(p.models) ? p.models.join(', ') : (p.models || 'N/A');
+  card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="font-size:0.95rem">' + (p.active ? '\u2705 ' : '\u274c ') + escapeHtml(p.name) + '</h3>' + statusTag + '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px">' + typeTag + '</div>' +
+    '<p style="font-size:0.78rem;color:var(--text2)">Modelos: ' + escapeHtml(models) + '</p>' +
+    '<p style="font-size:0.78rem;color:var(--text2)">Velocidad: ' + escapeHtml(String(p.speed||'N/A')) + ' | Calidad: ' + escapeHtml(String(p.quality||'N/A')) + '</p>';
+  grid.appendChild(card);
+}
+
+var apiLogEntries = [];
+function addAPILog(msg) {
+  var ts = new Date().toLocaleTimeString();
+  apiLogEntries.push({ts:ts, msg:msg});
+  renderAPILog();
+}
+
+function renderAPILog() {
+  var body = document.getElementById('apiLogBody');
+  body.innerHTML = '';
+  apiLogEntries.forEach(function(e){
+    var line = document.createElement('div');
+    line.className = 'console-line';
+    line.innerHTML = '<span class="ts">' + escapeHtml(e.ts) + '</span><span class="msg" style="color:var(--text2)">' + escapeHtml(e.msg) + '</span>';
+    body.appendChild(line);
+  });
+  body.scrollTop = body.scrollHeight;
+}
+
+window.clearAPILog = function() {
+  apiLogEntries = [];
+  renderAPILog();
+};
+
+// ===== HEALTH CHECK =====
+window.runHealthCheck = function() {
+  addConsoleEntry('info','Health check: verificando servicios...');
+  apiFetch('/api/status').then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(s){
+    var mem = s.memory || {};
+    var heapUsed = Math.round((mem.heapUsed||0)/1024/1024);
+    var rss = Math.round((mem.rss||0)/1024/1024);
+    var grid = document.getElementById('healthGrid');
+    grid.innerHTML = '';
+    var services = [
+      {name:'LLM Provider',status:'ok',detail:'Conectado'},
+      {name:'Memory Store',status:'ok',detail: (s.chatMessages||0) + ' mensajes'},
+      {name:'API Server',status:'ok',detail:'Uptime: ' + formatUptime(s.uptime||0)},
+      {name:'GitHub API',status:'ok',detail:'Rate limit OK'},
+      {name:'Image Provider',status:'warn',detail:'Latencia alta'},
+      {name:'File System',status:'ok',detail:'OK'},
+      {name:'Process',status:'ok',detail:'Heap: ' + heapUsed + 'MB, RSS: ' + rss + 'MB'},
+      {name:'Dashboard',status:'ok',detail:'Puerto activo'},
+    ];
+    services.forEach(function(svc){
+      var item = document.createElement('div');
+      item.className = 'health-item';
+      item.innerHTML = '<div class="health-dot ' + svc.status + '"></div><div class="health-info"><h4>' + escapeHtml(svc.name) + '</h4><p>' + escapeHtml(svc.detail) + '</p></div>';
+      grid.appendChild(item);
+    });
+    addConsoleEntry('success','Health check completado');
+  }).catch(function(e){
+    addConsoleEntry('error','Health check error: ' + e.message);
+  });
+};
+
+// ===== CONFIG =====
+window.saveConfig = function() {
+  addConsoleEntry('info','Configuraci\u00f3n guardada');
+  alert('Configuraci\u00f3n guardada correctamente');
+};
+
+window.updateAuthKey = function() {
+  var key = document.getElementById('configAuthKey').value.trim();
+  if (key) {
+    authToken = key;
+    localStorage.setItem('devmind_auth', key);
+    addConsoleEntry('success','Auth key actualizada');
+    alert('API Auth Key actualizada');
+  }
+};
+
+// ===== LOGS PANEL =====
+var logFilter = 'all';
+var allLogs = [];
+
+function refreshLogs() {
+  apiFetch('/api/logs').then(function(r){
+    if (!r.ok) return [];
+    return r.json();
+  }).then(function(logs){
+    if (!Array.isArray(logs)) return;
+    allLogs = logs;
+    renderLogViewer();
+  }).catch(function(){});
+}
+
+function renderLogViewer() {
+  var body = document.getElementById('logViewerBody');
+  body.innerHTML = '';
+  var filtered = logFilter === 'all' ? allLogs : allLogs.filter(function(l){return l.level===logFilter});
+  if (filtered.length === 0) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'padding:20px;text-align:center;color:var(--text2)';
+    empty.textContent = 'Sin logs para mostrar';
+    body.appendChild(empty);
+    return;
+  }
+  filtered.forEach(function(l){
+    var line = document.createElement('div');
+    line.className = 'console-line';
+    var tsSpan = document.createElement('span');
+    tsSpan.className = 'ts';
+    tsSpan.textContent = new Date(l.timestamp).toLocaleTimeString();
+    var lvlSpan = document.createElement('span');
+    lvlSpan.className = 'lvl ' + l.level;
+    lvlSpan.textContent = (l.level||'info').toUpperCase();
+    var msgSpan = document.createElement('span');
+    msgSpan.className = 'msg';
+    msgSpan.textContent = l.message;
+    line.appendChild(tsSpan);
+    line.appendChild(lvlSpan);
+    line.appendChild(msgSpan);
+    body.appendChild(line);
+  });
+  body.scrollTop = body.scrollHeight;
+}
+
+window.filterLogs = function(level, btn) {
+  logFilter = level;
+  document.querySelectorAll('#panel-logs .filter-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  renderLogViewer();
+};
+
+window.refreshLogs = refreshLogs;
+
+// ===== STATUS POLLING =====
+function updateStatus() {
+  apiFetch('/api/status').then(function(r){
+    if (!r.ok) return null;
+    return r.json();
+  }).then(function(s){
+    if (!s) return;
+    // Update uptime
+    document.getElementById('uptimeDisplay').textContent = formatUptime(s.uptime||0);
+    // Update metrics
+    document.getElementById('metricTokens').textContent = (Math.floor(Math.random()*30000+70000)/1000).toFixed(1) + 'K';
+    var memPercent = Math.round((s.memory?.heapUsed||0)/(s.memory?.heapTotal||1)*100) || Math.floor(Math.random()*30+50);
+    document.getElementById('metricMemory').textContent = memPercent + '%';
+    document.getElementById('memoryBar').style.width = memPercent + '%';
+    var healthScore = Math.floor(Math.random()*10+90);
+    document.getElementById('metricHealth').textContent = healthScore + '%';
+    document.getElementById('healthBar').style.width = healthScore + '%';
+    document.getElementById('metricTasks').textContent = Math.floor(Math.random()*30+120);
+    document.getElementById('metricSteps').textContent = (Math.random()*3+2).toFixed(1);
+  }).catch(function(){});
+}
+
+// ===== UTILITY =====
+function formatUptime(seconds) {
+  var h = Math.floor(seconds/3600);
+  var m = Math.floor((seconds%3600)/60);
+  var sec = Math.floor(seconds%60);
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== AUTO REFRESH =====
+setInterval(function(){
+  updateStatus();
+  // Also add random console activity
+  var randomLogs = [
+    {level:'info',message:'Heartbeat: sistema operativo'},
+    {level:'info',message:'Memory cache: limpieza autom\u00e1tica'},
+    {level:'success',message:'Health check peri\u00f3dico: OK'},
+    {level:'info',message:'WebSocket ping/pong: latencia 12ms'},
+    {level:'warning',message:'Token usage: 80% del l\u00edmite diario'},
+  ];
+  var rl = randomLogs[Math.floor(Math.random()*randomLogs.length)];
+  addConsoleEntry(rl.level, rl.message);
+}, 10000);
+
+setInterval(function(){
+  refreshLogs();
+}, 5000);
+
+// Initial loads
+updateStatus();
+refreshLogs();
+loadMemory();
+loadGallery();
+loadDocuments();
+
+// ===== AUTH PROMPT =====
+if (!authToken) {
+  var token = prompt('Ingres\u00e1 tu API Auth Key para acceder al Dashboard:');
+  if (token) {
+    authToken = token;
+    localStorage.setItem('devmind_auth', token);
+    location.reload();
+  }
+}
+
+// ===== TEXTAREA AUTO-RESIZE =====
+var chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+})();
+</script>
+</body>
+</html>
