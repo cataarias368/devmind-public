@@ -635,10 +635,27 @@ input,textarea{font-family:inherit}
     <!-- ═══ GALERÍA ═══ -->
     <section id="panel-galeria" class="panel">
       <div class="panel-title"><span class="icon">&#x1F5BC;&#xFE0F;</span> Galería</div>
-      <div class="placeholder-content">
-        <div class="placeholder-icon">&#x1F5BC;&#xFE0F;</div>
-        <h2>Galería de Imágenes</h2>
-        <p>Imágenes generadas por IA y assets visuales del proyecto. Arrastra o sube archivos para agregarlos a la galería.</p>
+      <div style="padding:1.5rem">
+        <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
+          <input id="img-prompt" type="text" placeholder="Describí la imagen que querés generar..." style="flex:1;min-width:200px;padding:0.75rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e6edf5;font-size:0.95rem;outline:none" onfocus="this.style.borderColor='#58a6ff'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <select id="img-style" style="padding:0.75rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e6edf5;font-size:0.9rem">
+            <option value="">Normal</option>
+            <option value="realistic">Realista</option>
+            <option value="anime">Anime</option>
+            <option value="digital-art">Arte Digital</option>
+            <option value="pixel-art">Pixel Art</option>
+            <option value="watercolor">Acuarela</option>
+          </select>
+          <button id="btn-gen-img" onclick="generateImage()" style="padding:0.75rem 1.5rem;background:linear-gradient(135deg,#58a6ff,#a371f7);border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer;transition:transform 0.15s" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">🎨 Generar</button>
+        </div>
+        <div id="img-status" style="display:none;padding:0.75rem;margin-bottom:1rem;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:8px;color:#58a6ff;font-size:0.9rem;text-align:center"></div>
+        <div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
+          <div id="img-empty" style="grid-column:1/-1;text-align:center;padding:3rem;color:#8b9bb5">
+            <div style="font-size:3rem;margin-bottom:0.5rem">🎨</div>
+            <p>Escribí un prompt y generá imágenes con IA</p>
+            <p style="font-size:0.8rem;color:#6e7a8a">Usa Pollinations.ai — 100% gratis, sin API key</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1368,6 +1385,96 @@ input,textarea{font-family:inherit}
       if(currentPanel==='logs') fetchLogs();
     },5000);
     setInterval(fetchProviderCount,30000);
+
+    // === IMAGE GENERATION ===
+    const imgPrompt=document.getElementById('img-prompt');
+    const imgStyle=document.getElementById('img-style');
+    const imgStatus=document.getElementById('img-status');
+    const imgGallery=document.getElementById('img-gallery');
+    const imgEmpty=document.getElementById('img-empty');
+    const btnGenImg=document.getElementById('btn-gen-img');
+
+    if(imgPrompt){
+      imgPrompt.addEventListener('keydown',function(e){
+        if(e.key==='Enter') generateImage();
+      });
+    }
+
+    window.generateImage=async function(){
+      const prompt=imgPrompt?imgPrompt.value.trim():'';
+      if(!prompt) return;
+
+      const style=imgStyle?imgStyle.value:'';
+      const fullPrompt=style?prompt+', '+style+' style':prompt;
+
+      if(btnGenImg){btnGenImg.disabled=true;btnGenImg.textContent='⏳ Generando...';}
+      if(imgStatus){imgStatus.style.display='block';imgStatus.textContent='🎨 Generando imagen... Esto puede tardar 10-30 segundos';}
+      if(imgEmpty) imgEmpty.style.display='none';
+
+      try{
+        const r=await fetch('/api/images/generate',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({prompt:fullPrompt,style:style})
+        });
+        const data=await r.json();
+        if(data.success){
+          if(imgStatus){imgStatus.style.display='block';imgStatus.textContent='✅ Imagen generada via '+data.provider;}
+          addImageToGallery(fullPrompt,data.url,data.provider);
+          if(imgPrompt) imgPrompt.value='';
+        }else{
+          if(imgStatus){imgStatus.style.display='block';imgStatus.textContent='❌ Error: '+(data.error||'Error desconocido');}
+        }
+      }catch(e){
+        if(imgStatus){imgStatus.style.display='block';imgStatus.textContent='❌ Error de conexión';}
+      }finally{
+        if(btnGenImg){btnGenImg.disabled=false;btnGenImg.textContent='🎨 Generar';}
+      }
+    };
+
+    function addImageToGallery(prompt,url,provider){
+      if(!imgGallery) return;
+      const card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;transition:transform 0.2s';
+      card.onmouseover=function(){card.style.transform='scale(1.02)';};
+      card.onmouseout=function(){card.style.transform='scale(1)';};
+
+      const img=document.createElement('img');
+      img.src=url;
+      img.alt=prompt;
+      img.style.cssText='width:100%;aspect-ratio:1;object-fit:cover;display:block';
+      img.loading='lazy';
+
+      const info=document.createElement('div');
+      info.style.cssText='padding:0.75rem';
+      const p=document.createElement('p');
+      p.style.cssText='font-size:0.8rem;color:#8b9bb5;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      p.textContent=prompt;
+      const badge=document.createElement('span');
+      badge.style.cssText='font-size:0.7rem;color:#58a6ff;margin-top:0.25rem;display:inline-block';
+      badge.textContent='via '+provider;
+      info.appendChild(p);
+      info.appendChild(badge);
+
+      card.appendChild(img);
+      card.appendChild(info);
+      imgGallery.insertBefore(card,imgGallery.firstChild);
+    }
+
+    // Cargar imágenes existentes al abrir galería
+    async function loadImages(){
+      try{
+        const r=await fetch('/api/images');
+        const data=await r.json();
+        if(data.images&&data.images.length>0){
+          if(imgEmpty) imgEmpty.style.display='none';
+          for(const img of data.images){
+            addImageToGallery(img.prompt,img.url,img.provider);
+          }
+        }
+      }catch(e){}
+    }
+    loadImages();
   }
 
   init();

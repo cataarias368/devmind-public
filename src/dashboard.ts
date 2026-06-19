@@ -61,6 +61,7 @@ export class DashboardServer {
   private server: ReturnType<typeof createServer> | null = null;
   private readonly chatHistory: ChatMessage[] = [];
   private readonly logs: Array<{ level: string; message: string; timestamp: number }> = [];
+  private readonly generatedImages: Array<{ prompt: string; url: string; filePath: string; timestamp: number; provider: string }> = [];
 
   constructor(config: DashboardConfig) {
     this.config = config;
@@ -147,6 +148,7 @@ export class DashboardServer {
     const publicEndpoints = [
       '/api/status', '/api/logs', '/api/providers/status',
       '/api/config/status', '/api/config/providers', '/api/config/apikey',
+      '/api/images', '/api/images/generate',
     ];
     const apiKeyConfigured = !!this.config.apiKey && this.config.apiKey !== 'devmind';
     if (url.startsWith('/api/') && !publicEndpoints.includes(url) && apiKeyConfigured) {
@@ -375,6 +377,91 @@ export class DashboardServer {
           memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
           timestamp: new Date().toISOString(),
         }));
+        return;
+      }
+
+      // API: Generar imagen
+      if (url === '/api/images/generate' && method === 'POST') {
+        const body = await this.readBody(req);
+        let parsed: { prompt?: string; style?: string; width?: number; height?: number };
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'JSON invalido' }));
+          return;
+        }
+        const prompt = typeof parsed.prompt === 'string' ? parsed.prompt.trim() : '';
+        if (!prompt) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Prompt requerido' }));
+          return;
+        }
+
+        try {
+          // Intentar CogView (ZhipuAI) primero
+          if (this.config.agentCore?.imageProvider) {
+            const result = await this.config.agentCore.imageProvider.generate(prompt, {
+              size: '1024x1024',
+              style: parsed.style,
+            });
+            if (result.success) {
+              const imageUrl = result.url || `/generated_images/${resolve(result.filePath || '').split(/[/\\]/).pop()}`;
+              this.generatedImages.push({ prompt, url: imageUrl, filePath: result.filePath || '', timestamp: Date.now(), provider: 'cogview' });
+              this.log('info', `Imagen generada via CogView: "${prompt.slice(0, 40)}..."`);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, url: imageUrl, provider: 'cogview', prompt }));
+              return;
+            }
+          }
+
+          // Fallback: Pollinations.ai (GRATIS, sin API key)
+          const { PollinationsProvider } = await import('./image-providers/pollinations.js');
+          const outputDir = resolve(this.config.agentCore?.workspaceRoot || process.cwd(), 'generated_images');
+          const pollinations = new PollinationsProvider({ outputDir });
+          const result = await pollinations.generate(prompt, {
+            width: parsed.width || 1024,
+            height: parsed.height || 1024,
+          });
+
+          if (result.success) {
+            const imageUrl = result.url || `/generated_images/${resolve(result.filePath || '').split(/[/\\]/).pop()}`;
+            this.generatedImages.push({ prompt, url: imageUrl, filePath: result.filePath || '', timestamp: Date.now(), provider: 'pollinations' });
+            this.log('info', `Imagen generada via Pollinations: "${prompt.slice(0, 40)}..."`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, url: imageUrl, provider: 'pollinations', prompt }));
+          } else {
+            this.log('error', `Error generando imagen: ${result.error}`);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: result.error }));
+          }
+        } catch (imgErr) {
+          this.log('error', `Image generation error: ${imgErr instanceof Error ? imgErr.message : String(imgErr)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error generando imagen' }));
+        }
+        return;
+      }
+
+      // API: Listar imágenes generadas
+      if (url === '/api/images' && method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ images: this.generatedImages.slice(-50) }));
+        return;
+      }
+
+      // Servir imágenes generadas
+      if (url.startsWith('/generated_images/') && method === 'GET') {
+        try {
+          const imageName = url.replace('/generated_images/', '');
+          const imagePath = resolve(this.config.agentCore?.workspaceRoot || process.cwd(), 'generated_images', imageName);
+          const imageData = await readFileAsync(imagePath);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+          res.end(imageData);
+        } catch {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Not Found');
+        }
         return;
       }
 
