@@ -503,15 +503,28 @@ export class DashboardServer {
    */
   private getDashboardHTML(): string {
     // Buscar dashboard.html en varias rutas posibles
+    // Importante: tsx puede resolver __dirname a un caché temporal,
+    // así que buscamos exhaustivamente en múltiples ubicaciones
     const searchPaths = [
-      resolve(__dirname, 'ui', 'dashboard.html'),       // dist/ui/dashboard.html (compilado)
-      resolve(__dirname, '..', 'src', 'ui', 'dashboard.html'),  // src/ui/dashboard.html (desarrollo)
-      resolve(process.cwd(), 'src', 'ui', 'dashboard.html'),    // cwd/src/ui/dashboard.html
+      resolve(__dirname, 'ui', 'dashboard.html'),              // dist/ui/dashboard.html (compilado)
+      resolve(__dirname, '..', 'src', 'ui', 'dashboard.html'), // src/ui/dashboard.html (desarrollo tsx)
+      resolve(process.cwd(), 'src', 'ui', 'dashboard.html'),   // cwd/src/ui/dashboard.html
+      resolve(process.cwd(), 'ui', 'dashboard.html'),          // cwd/ui/dashboard.html (alternativa)
+      resolve(__dirname, '..', '..', 'src', 'ui', 'dashboard.html'), // 2 niveles arriba
     ];
+
+    // Diagnóstico: mostrar qué rutas se buscan y dónde está __dirname
+    console.log(`[Dashboard] __dirname = ${__dirname}`);
+    console.log(`[Dashboard] cwd = ${process.cwd()}`);
+    console.log(`[Dashboard] Buscando dashboard.html en:`);
+    for (const p of searchPaths) {
+      console.log(`  → ${p} (${existsSync(p) ? '✅ existe' : '❌ no existe'})`);
+    }
 
     for (const htmlPath of searchPaths) {
       if (existsSync(htmlPath)) {
         try {
+          console.log(`[Dashboard] Cargando desde: ${htmlPath}`);
           return readFileSync(htmlPath, 'utf-8');
         } catch (e) {
           console.error(`[Dashboard] Error leyendo ${htmlPath}: ${e instanceof Error ? e.message : String(e)}`);
