@@ -240,32 +240,39 @@ export class DashboardServer {
           this.log('warn', `No se pudo escribir .env: ${envErr instanceof Error ? envErr.message : String(envErr)}. Key en memoria.`);
         }
 
-        // 3. Re-inyectar LLM si era la key principal y no hay agentCore aún
-        if (provider === 'zhipuai' && !this.config.agentCore) {
+        // 3. Re-inyectar AgentCore si no existe aún
+        if (!this.config.agentCore) {
           try {
-            const { GLM47Provider } = await import('./llm-provider.js');
             const { CogViewProvider } = await import('./image-provider.js');
             const { CheckpointManager } = await import('./checkpoint.js');
             const { MemoryStore } = await import('./memory.js');
             const { LLMRouter } = await import('./llm-router.js');
 
             const workspaceRoot = process.env.WORKSPACE_ROOT || process.cwd();
-            const llmProvider = new GLM47Provider({ apiKey });
-            const imageProvider = new CogViewProvider({ apiKey, outputDir: resolve(workspaceRoot, 'generated_images') });
+            const llmRouter = new LLMRouter(process.env.GLM_API_KEY || '');
+
+            // GLM47Provider solo si la key es de ZhipuAI, si no usar RouterBackedProvider
+            let llmProvider;
+            if (provider === 'zhipuai' && apiKey.includes('.')) {
+              const { GLM47Provider } = await import('./llm-provider.js');
+              llmProvider = new GLM47Provider({ apiKey });
+            } else {
+              const { RouterBackedProvider } = await import('./llm-router.js');
+              llmProvider = new RouterBackedProvider(llmRouter);
+            }
+            const imageProvider = new CogViewProvider({ apiKey: apiKey || 'placeholder', outputDir: resolve(workspaceRoot, 'generated_images') });
             const checkpointManager = new CheckpointManager(workspaceRoot);
             const memoryStore = new MemoryStore(workspaceRoot);
             await checkpointManager.init();
             await memoryStore.init();
 
-            const llmRouter = new LLMRouter(apiKey);
-
             this.setAgentCore({ llmProvider, imageProvider, checkpointManager, memoryStore, workspaceRoot });
             this.setLLMRouter(llmRouter);
 
             const routerStats = llmRouter.getStats();
-            this.log('info', `LLM inyectado dinámicamente. Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
+            this.log('info', `AgentCore inyectado. Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
           } catch (injectErr) {
-            this.log('error', `Error inyectando LLM: ${injectErr instanceof Error ? injectErr.message : String(injectErr)}`);
+            this.log('error', `Error inyectando AgentCore: ${injectErr instanceof Error ? injectErr.message : String(injectErr)}`);
           }
         }
 
@@ -423,15 +430,18 @@ export class DashboardServer {
     // Registrar mensaje del usuario
     this.chatHistory.push({ role: 'user', content: message, timestamp: Date.now() });
 
-    // Verificar si hay LLM disponible
-    if (!this.config.agentCore?.llmProvider) {
+    // Verificar si hay LLM disponible (router o provider directo)
+    const hasRouter = !!this.config.llmRouter;
+    const hasDirectProvider = !!this.config.agentCore?.llmProvider;
+
+    if (!hasRouter && !hasDirectProvider) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'API Key no configurada. Configurala desde el panel de Configuracion.' }));
       return;
     }
 
     try {
-      // Llamar al LLM
+      // Construir mensajes para el LLM
       const messages: LLMMessage[] = [
         { role: 'system', content: 'Sos DevMind, un asistente de desarrollo. Respondé en español de forma clara y profesional.' },
         ...this.chatHistory.slice(-20).map(m => ({
@@ -440,8 +450,18 @@ export class DashboardServer {
         })),
       ];
 
-      const response = await this.config.agentCore.llmProvider.call(messages);
-      const assistantContent = response.choices[0]?.message?.content || 'Sin respuesta';
+      let assistantContent: string;
+
+      if (hasRouter) {
+        // Usar el router (soporta GLM, Groq, OpenRouter, Google, Mistral, Cloudflare)
+        const response = await this.config.llmRouter!.callWithFallback(messages, message);
+        assistantContent = response.choices[0]?.message?.content || 'Sin respuesta';
+        this.log('info', `Chat respondido via ${response.providerUsed}${response.fallbackUsed ? ' (fallback)' : ''}`);
+      } else {
+        // Fallback directo a GLM47Provider (solo si hay key de ZhipuAI)
+        const response = await this.config.agentCore!.llmProvider!.call(messages);
+        assistantContent = response.choices[0]?.message?.content || 'Sin respuesta';
+      }
 
       this.chatHistory.push({ role: 'assistant', content: assistantContent, timestamp: Date.now() });
 

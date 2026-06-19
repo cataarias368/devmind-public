@@ -11,7 +11,7 @@ import type { MemoryStore } from './memory.js';
 // --- Núcleo del Agente ---
 
 export interface AgentCore {
-  llmProvider: GLM47Provider;
+  llmProvider: GLM47Provider;  // GLM47Provider o RouterBackedProvider (delegado al router)
   imageProvider: CogViewProvider;
   checkpointManager: CheckpointManager;
   memoryStore: MemoryStore;

@@ -34,14 +34,20 @@ export class CogViewProvider {
   private readonly model: string;
   private readonly baseUrl: string;
   private readonly outputDir: string;
+  private readonly available: boolean;
 
   constructor(config: CogViewConfig) {
     const parts = config.apiKey.split('.');
     if (parts.length !== 2) {
-      throw new Error('GLM_API_KEY debe tener formato "id.secret" para CogView');
+      // CogView solo funciona con ZhipuAI — si no hay key válida, marcar como no disponible
+      this.apiKeyId = '';
+      this.apiKeySecret = '';
+      this.available = false;
+    } else {
+      this.apiKeyId = parts[0];
+      this.apiKeySecret = parts[1];
+      this.available = true;
     }
-    this.apiKeyId = parts[0];
-    this.apiKeySecret = parts[1];
     this.model = config.model || 'cogview-3-plus';
     this.baseUrl = config.baseUrl || 'https://open.bigmodel.cn/api/paas/v4';
     this.outputDir = resolve(config.outputDir);
@@ -81,6 +87,9 @@ export class CogViewProvider {
       style?: string;
     }
   ): Promise<ImageGenerationResult> {
+    if (!this.available) {
+      return { success: false, error: 'Generación de imágenes no disponible. Se requiere GLM_API_KEY (ZhipuAI) para CogView.' };
+    }
     try {
       await mkdir(this.outputDir, { recursive: true });
 

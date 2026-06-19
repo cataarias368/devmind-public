@@ -22,7 +22,7 @@ import { Monitor } from './monitor.js';
 import { scanAvailableModels } from './llm-scanner.js';
 import { A2AProtocol } from './a2a-protocol.js';
 import { VideoGenerator } from './video/index.js';
-import { LLMRouter } from './llm-router.js';
+import { LLMRouter, RouterBackedProvider } from './llm-router.js';
 import { ID, show, assert } from './core/identity.js';
 import { getLicensingInfo } from './core/licensing.js';
 import { claimRevenue, detectCommercialUse, getAds } from './core/monetization.js';
@@ -54,10 +54,30 @@ async function main(): Promise<void> {
   const ads = getAds('free');
   if (ads.length > 0) console.log('📢 [DevMind] Publicidad activa (plan gratuito)');
 
-  // --- Aviso si no hay API Key ---
-  if (!config.GLM_API_KEY) {
-    console.warn('⚠️  GLM_API_KEY no configurada. El dashboard funcionará, pero el chat requerirá que configures tu API Key desde la UI.');
-    console.warn('   💡 Obtenela en: https://open.bigmodel.cn/');
+  // --- Verificar API Keys disponibles ---
+  const hasGroq = !!process.env.GROQ_API_KEY;
+  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+  const hasGoogle = !!process.env.GOOGLE_API_KEY;
+  const hasMistral = !!process.env.MISTRAL_API_KEY;
+  const hasGLM = !!config.GLM_API_KEY;
+  const hasCloudflare = !!(process.env.CLOUDFLARE_API_KEY && process.env.CLOUDFLARE_ACCOUNT_ID);
+  const hasAnyKey = hasGroq || hasOpenRouter || hasGoogle || hasMistral || hasGLM || hasCloudflare;
+
+  if (!hasAnyKey) {
+    console.warn('⚠️  No hay API Key configurada. El dashboard funcionará, pero el chat requerirá que configures tu API Key desde la UI.');
+    console.warn('   💡 Proveedores soportados:');
+    console.warn('      - Zhipu AI (GLM-4): https://open.bigmodel.cn/');
+    console.warn('      - Groq (Llama, gratis): https://console.groq.com/');
+    console.warn('      - OpenRouter (multi-modelo, gratis): https://openrouter.ai/');
+    console.warn('      - Google AI Studio (Gemini, gratis): https://aistudio.google.com/');
+    console.warn('      - Mistral AI: https://console.mistral.ai/');
+  } else {
+    if (hasGLM) console.log('✅ Zhipu AI (GLM-4) configurado');
+    if (hasGroq) console.log('✅ Groq configurado');
+    if (hasOpenRouter) console.log('✅ OpenRouter configurado');
+    if (hasGoogle) console.log('✅ Google AI Studio configurado');
+    if (hasMistral) console.log('✅ Mistral AI configurado');
+    if (hasCloudflare) console.log('✅ Cloudflare Workers AI configurado');
   }
 
   // --- Comando DASHBOARD: arrancar ANTES de instanciar LLM ---
@@ -71,18 +91,25 @@ async function main(): Promise<void> {
       allowedOrigins: config.ALLOWED_ORIGINS.split(','),
     });
 
-    // Si ya hay API key, inyectar el LLM al dashboard
-    if (config.GLM_API_KEY) {
-      const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+    // Si hay alguna API key, crear router e inyectar
+    if (hasAnyKey) {
       const imageProvider = new CogViewProvider({
-        apiKey: config.GLM_API_KEY,
+        apiKey: config.GLM_API_KEY || 'placeholder',
         outputDir: resolve(workspaceRoot, 'generated_images'),
       });
       const checkpointManager = new CheckpointManager(workspaceRoot);
       const memoryStore = new MemoryStore(workspaceRoot);
       await checkpointManager.init();
       await memoryStore.init();
-      const llmRouter = new LLMRouter(config.GLM_API_KEY);
+
+      // LLMRouter lee de process.env — registra todos los providers disponibles
+      const llmRouter = new LLMRouter(config.GLM_API_KEY || '');
+
+      // GLM47Provider solo se crea si hay key de ZhipuAI con formato válido
+      // Si no hay GLM, usamos RouterBackedProvider que delega al router
+      const llmProvider = hasGLM && config.GLM_API_KEY.includes('.')
+        ? new GLM47Provider({ apiKey: config.GLM_API_KEY })
+        : new RouterBackedProvider(llmRouter);
 
       dashboard.setAgentCore({
         llmProvider,
@@ -100,7 +127,7 @@ async function main(): Promise<void> {
 
     await dashboard.start();
     console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
-    if (!config.GLM_API_KEY) {
+    if (!hasAnyKey) {
       console.log('🔑 Configura tu API Key desde el panel de Configuracion en el dashboard');
     }
     console.log('Presioná Ctrl+C para detener.');
@@ -109,19 +136,27 @@ async function main(): Promise<void> {
     return;
   }
 
-  // --- Para todos los demás modos: SÍ se requiere API Key ---
-  if (!config.GLM_API_KEY) {
-    console.error('❌ Este modo requiere GLM_API_KEY. Configurala con --dashboard primero o en .env');
+  // --- Para todos los demás modos: SÍ se requiere alguna API Key ---
+  if (!hasAnyKey) {
+    console.error('❌ Este modo requiere al menos una API Key. Configurala en .env:');
+    console.error('   - GLM_API_KEY (Zhipu AI)');
+    console.error('   - GROQ_API_KEY (Groq, gratis)');
+    console.error('   - OPENROUTER_API_KEY (OpenRouter, gratis)');
+    console.error('   - GOOGLE_API_KEY (Google AI Studio, gratis)');
     process.exit(1);
   }
 
   // --- Inicializar LLM Router (múltiples proveedores API) ---
-  const llmRouter = new LLMRouter(config.GLM_API_KEY);
+  const llmRouter = new LLMRouter(config.GLM_API_KEY || '');
   const routerStats = llmRouter.getStats();
   if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
 
   // --- Inicializar proveedores globales ---
-  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+  // GLM47Provider solo se crea si hay key de ZhipuAI con formato válido
+  // Si no hay GLM, usamos RouterBackedProvider que delega al router
+  const llmProvider = hasGLM && config.GLM_API_KEY.includes('.')
+    ? new GLM47Provider({ apiKey: config.GLM_API_KEY })
+    : new RouterBackedProvider(llmRouter);
   const imageProvider = new CogViewProvider({
     apiKey: config.GLM_API_KEY || 'placeholder',
     outputDir: resolve(workspaceRoot, 'generated_images'),

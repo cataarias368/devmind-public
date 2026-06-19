@@ -28,6 +28,29 @@ export interface ProviderStatus {
   type: string;
 }
 
+/**
+ * RouterBackedProvider — actúa como GLM47Provider pero delega
+ * al LLMRouter. Permite que los modos que requieren llmProvider
+ * (agent, server, bots, etc.) funcionen sin key de ZhipuAI.
+ */
+export class RouterBackedProvider extends GLM47Provider {
+  private router: LLMRouter;
+
+  constructor(router: LLMRouter) {
+    // GLM47Provider requiere formato id.secret — usamos un dummy
+    // que nunca se alcanza porque call() se sobreescribe
+    super({ apiKey: '0.0' });
+    this.router = router;
+  }
+
+  async call(messages: LLMMessage[], tools?: ToolDefinition[]): Promise<LLMResponse> {
+    const task = messages.map(m => m.content).join(' ').slice(0, 200);
+    const result = await this.router.callWithFallback(messages, task, tools);
+    // callWithFallback retorna LLMResponse + providerUsed + fallbackUsed
+    return result as LLMResponse;
+  }
+}
+
 export class LLMRouter {
   private providers: Map<string, LLMProviderInfo> = new Map();
   private glmProvider: GLM47Provider | null = null;
