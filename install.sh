@@ -61,6 +61,8 @@ echo -e "${BLUE}[3/5]${NC} Clonando DevMind..."
 if [ -d "devmind" ]; then
     echo -e "  ${YELLOW}⚠️${NC} Directorio 'devmind' ya existe. Actualizando..."
     cd devmind
+    git reset --hard HEAD
+    git clean -fd
     git pull origin main
 else
     git clone https://github.com/cataarias368/devmind-public.git devmind

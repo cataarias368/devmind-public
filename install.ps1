@@ -38,6 +38,8 @@ Write-Host "[3/5] Clonando DevMind..." -ForegroundColor Blue
 if (Test-Path "devmind") {
     Write-Host "  ⚠️ Directorio 'devmind' ya existe. Actualizando..." -ForegroundColor Yellow
     Set-Location devmind
+    git reset --hard HEAD
+    git clean -fd
     git pull origin main
 } else {
     git clone https://github.com/cataarias368/devmind-public.git devmind
@@ -88,8 +90,8 @@ Write-Host ""
 # Preguntar si quiere iniciar
 $reply = Read-Host "Iniciar DevMind ahora? (s/n)"
 if ($reply -eq "s" -or $reply -eq "S" -or $reply -eq "y" -or $reply -eq "Y") {
-    # Iniciar en background y abrir navegador
-    Start-Process -NoNewWindow -FilePath "npx" -ArgumentList "tsx","src/index.ts","--dashboard"
+    # Iniciar en una nueva ventana de PowerShell para ver los logs
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; npx tsx src/index.ts --dashboard"
     Start-Sleep -Seconds 3
     Start-Process "http://localhost:3001"
 }
