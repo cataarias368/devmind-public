@@ -11,7 +11,7 @@ import type { LLMRouter } from './llm-router.js';
 
 interface DashboardConfig {
   port: number;
-  agentCore: AgentCore;
+  agentCore?: AgentCore; // Opcional: el dashboard funciona sin API key
   apiKey: string;
   allowedOrigins?: string[];
   llmRouter?: LLMRouter;
@@ -59,6 +59,24 @@ export class DashboardServer {
 
   constructor(config: DashboardConfig) {
     this.config = config;
+  }
+
+  /**
+   * Inyecta o actualiza el AgentCore después de que el usuario
+   * configura la API Key desde la UI. Permite que el dashboard
+   * arranque sin API key y luego la reciba dinámicamente.
+   */
+  setAgentCore(agentCore: AgentCore): void {
+    this.config.agentCore = agentCore;
+    this.log('info', 'AgentCore configurado — LLM disponible para chat');
+  }
+
+  /**
+   * Inyecta o actualiza el LLMRouter después de que el usuario
+   * configura la API Key desde la UI.
+   */
+  setLLMRouter(llmRouter: LLMRouter): void {
+    this.config.llmRouter = llmRouter;
   }
 
   async start(): Promise<void> {
@@ -196,7 +214,7 @@ export class DashboardServer {
       // Serve logo
       if (url === '/logo.png' && method === 'GET') {
         try {
-          const logoPath = resolve(this.config.agentCore.workspaceRoot, '..', 'logo.png');
+          const logoPath = resolve(this.config.agentCore?.workspaceRoot || process.cwd(), '..', 'logo.png');
           const logoData = await readFileAsync(logoPath);
           res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
           res.end(logoData);
@@ -244,6 +262,13 @@ export class DashboardServer {
 
     // Registrar mensaje del usuario
     this.chatHistory.push({ role: 'user', content: message, timestamp: Date.now() });
+
+    // Verificar si hay LLM disponible
+    if (!this.config.agentCore?.llmProvider) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'API Key no configurada. Configurala desde el panel de Configuracion.' }));
+      return;
+    }
 
     try {
       // Llamar al LLM

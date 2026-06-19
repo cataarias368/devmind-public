@@ -54,19 +54,74 @@ async function main(): Promise<void> {
   const ads = getAds('free');
   if (ads.length > 0) console.log('📢 [DevMind] Publicidad activa (plan gratuito)');
 
-  // --- Inicializar LLM Router (múltiples proveedores API) ---
-  const llmRouter = new LLMRouter(config.GLM_API_KEY || 'placeholder');
-  const routerStats = llmRouter.getStats();
-  if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
-
   // --- Aviso si no hay API Key ---
   if (!config.GLM_API_KEY) {
     console.warn('⚠️  GLM_API_KEY no configurada. El dashboard funcionará, pero el chat requerirá que configures tu API Key desde la UI.');
     console.warn('   💡 Obtenela en: https://open.bigmodel.cn/');
   }
 
+  // --- Comando DASHBOARD: arrancar ANTES de instanciar LLM ---
+  // El dashboard funciona completamente sin API Key.
+  // Solo el chat requiere que el LLM esté disponible.
+  if (args.includes('--dashboard')) {
+    // Iniciar dashboard SIN agentCore (funciona sin API key)
+    const dashboard = new DashboardServer({
+      port: config.DASHBOARD_PORT,
+      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY || 'devmind',
+      allowedOrigins: config.ALLOWED_ORIGINS.split(','),
+    });
+
+    // Si ya hay API key, inyectar el LLM al dashboard
+    if (config.GLM_API_KEY) {
+      const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+      const imageProvider = new CogViewProvider({
+        apiKey: config.GLM_API_KEY,
+        outputDir: resolve(workspaceRoot, 'generated_images'),
+      });
+      const checkpointManager = new CheckpointManager(workspaceRoot);
+      const memoryStore = new MemoryStore(workspaceRoot);
+      await checkpointManager.init();
+      await memoryStore.init();
+      const llmRouter = new LLMRouter(config.GLM_API_KEY);
+
+      dashboard.setAgentCore({
+        llmProvider,
+        imageProvider,
+        checkpointManager,
+        memoryStore,
+        workspaceRoot,
+      });
+      dashboard.setLLMRouter(llmRouter);
+
+      const routerStats = llmRouter.getStats();
+      if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
+      console.log('✅ API Key configurada — Chat disponible');
+    }
+
+    await dashboard.start();
+    console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
+    if (!config.GLM_API_KEY) {
+      console.log('🔑 Configura tu API Key desde el panel de Configuracion en el dashboard');
+    }
+    console.log('Presioná Ctrl+C para detener.');
+
+    process.on('SIGINT', () => process.exit(0));
+    return;
+  }
+
+  // --- Para todos los demás modos: SÍ se requiere API Key ---
+  if (!config.GLM_API_KEY) {
+    console.error('❌ Este modo requiere GLM_API_KEY. Configurala con --dashboard primero o en .env');
+    process.exit(1);
+  }
+
+  // --- Inicializar LLM Router (múltiples proveedores API) ---
+  const llmRouter = new LLMRouter(config.GLM_API_KEY);
+  const routerStats = llmRouter.getStats();
+  if (routerStats.active > 0) console.log(`🔌 LLM Router: ${routerStats.active}/${routerStats.providers} proveedores activos`);
+
   // --- Inicializar proveedores globales ---
-  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY || 'placeholder' });
+  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
   const imageProvider = new CogViewProvider({
     apiKey: config.GLM_API_KEY || 'placeholder',
     outputDir: resolve(workspaceRoot, 'generated_images'),
@@ -218,26 +273,7 @@ async function main(): Promise<void> {
 
   // ======== MODOS ORIGINALES ========
 
-  // 1. MODO DASHBOARD WEB
-  if (args.includes('--dashboard')) {
-    await taskManager.startAllTasks();
-    const dashboard = new DashboardServer({
-      port: config.DASHBOARD_PORT,
-      agentCore,
-      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
-      allowedOrigins: config.ALLOWED_ORIGINS.split(','),
-      llmRouter,
-    });
-    await dashboard.start();
-    console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
-    console.log('Presioná Ctrl+C para detener.');
-
-    process.on('SIGINT', async () => {
-      await taskManager.stopAllTasks();
-      process.exit(0);
-    });
-    return;
-  }
+  // (Dashboard mode is handled earlier, before LLM initialization)
 
   // 2. MODO API REST
   if (args.includes('--server')) {
