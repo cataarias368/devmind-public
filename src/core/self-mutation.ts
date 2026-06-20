@@ -318,69 +318,113 @@ export class SelfMutationEngine {
   // ============================================================
 
   private async generateProposal(target: MutationTarget): Promise<MutationProposal | null> {
-    const systemPrompt = `Sos DevMind Self-Mutation, un sistema que mejora su propio código fuente.
-Analizá el archivo ${target.relativePath} y proponé UNA mejora concreta.
+    // Normalizar path a forward slashes para consistencia
+    const normalizedPath = target.relativePath.replace(/\\/g, '/');
 
-Issues detectados:
+    const systemPrompt = `You are DevMind Self-Mutation, a system that improves its own source code.
+Analyze the file ${normalizedPath} and propose ONE concrete improvement.
+
+Detected issues:
 ${target.issues.map(i => `- ${i}`).join('\n')}
 
-Áreas de mejora:
+Improvement areas:
 ${target.improvementAreas.map(a => `- ${a}`).join('\n')}
 
-Código actual (primeras ${this.config.maxLinesPerFile || 200} líneas):
+Current code (first ${this.config.maxLinesPerFile || 200} lines):
 ${target.currentCode.split('\n').slice(0, this.config.maxLinesPerFile || 200).join('\n')}
 
-Respondé EXACTAMENTE en este formato JSON (sin markdown, sin backticks):
-{
-  "file": "${target.relativePath}",
-  "description": "Descripción corta de la mejora",
-  "reasoning": "Por qué esta mejora es beneficiosa",
-  "oldCode": "código exacto a reemplazar (mínimo 3 líneas)",
-  "newCode": "código nuevo mejorado",
-  "riskLevel": "low|medium|high",
-  "category": "performance|feature|bugfix|refactor|security|dependency"
-}
+Respond with EXACTLY this JSON format (no markdown, no backticks, no code fences, pure JSON only):
+{"file":"${normalizedPath}","description":"Short description","reasoning":"Why this improvement is beneficial","oldCode":"exact code to replace (at least 3 lines)","newCode":"improved code","riskLevel":"low","category":"performance"}
 
-REGLAS:
-- Solo proponé cambios que sean seguros y reversibles
-- NO elimines funcionalidad existente
-- NO cambies interfaces públicas
-- Priorizá mejoras que eliminen dependencias externas
-- El oldCode debe ser código EXISTENTE en el archivo (coincidencia exacta)
-- El newCode debe ser código completo y funcional
-- Si no hay mejora clara, respondé: {"skip": true}`;
+RULES:
+- Only propose safe, reversible changes
+- Do NOT remove existing functionality
+- Do NOT change public interfaces
+- oldCode must be EXACT code from the file (character-perfect match)
+- newCode must be complete, functional TypeScript code
+- Use forward slashes in file paths (src/file.ts not src\\file.ts)
+- Keep oldCode to 3-15 lines for reliable matching
+- If no clear improvement, respond with: {"skip":true}
+- IMPORTANT: Output ONLY the JSON object, nothing else`;
 
     try {
       const messages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analizá ${target.relativePath} y proponé una mejora concreta y segura.` },
+        { role: 'user', content: `Analyze ${normalizedPath} and propose one concrete, safe improvement as JSON.` },
       ];
 
-      const response = await this.llmRouter.callWithFallback(messages, `self-mutation ${target.relativePath}`);
+      const response = await this.llmRouter.callWithFallback(messages, `self-mutation ${normalizedPath}`);
       const content = response.choices[0]?.message?.content || '';
 
-      // Parsear respuesta JSON
+      // Parsear respuesta JSON con múltiples estrategias
       let parsed: any;
       try {
-        // Intentar extraer JSON de la respuesta
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        // Estrategia 1: Extraer JSON de code blocks markdown
+        let jsonStr = content;
+
+        // Remover code fences si existen
+        const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+        if (codeBlockMatch) {
+          jsonStr = codeBlockMatch[1].trim();
+        }
+
+        // Estrategia 2: Buscar el primer { ... } balanceado
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
         if (!jsonMatch) return null;
-        parsed = JSON.parse(jsonMatch[0]);
-      } catch {
-        console.warn('[SelfMutation] No se pudo parsear respuesta del LLM');
-        return null;
+
+        // Estrategia 3: Limpiar caracteres problemáticos antes del JSON
+        let cleanJson = jsonMatch[0];
+        // Remover comillas escapadas mal formadas que rompen el parseo
+        cleanJson = cleanJson.replace(/\\n/g, '\\n');
+
+        parsed = JSON.parse(cleanJson);
+      } catch (parseErr) {
+        // Último intento: buscar campos individualmente con regex
+        try {
+          const descMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
+          const oldMatch = content.match(/"oldCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+          const newMatch = content.match(/"newCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+
+          if (!oldMatch || !newMatch) {
+            console.warn('[SelfMutation] No se pudo extraer oldCode/newCode de la respuesta del LLM');
+            return null;
+          }
+
+          parsed = {
+            description: descMatch?.[1] || 'Mejora de código',
+            reasoning: (content.match(/"reasoning"\s*:\s*"([^"]+)"/)?.[1]) || '',
+            oldCode: JSON.parse(`"${oldMatch[1]}"`),
+            newCode: JSON.parse(`"${newMatch[1]}"`),
+            riskLevel: (content.match(/"riskLevel"\s*:\s*"([^"]+)"/)?.[1]) || 'medium',
+            category: (content.match(/"category"\s*:\s*"([^"]+)"/)?.[1]) || 'refactor',
+          };
+        } catch {
+          console.warn('[SelfMutation] No se pudo parsear respuesta del LLM después de múltiples intentos');
+          return null;
+        }
       }
 
       if (parsed.skip || !parsed.oldCode || !parsed.newCode) return null;
 
-      // Verificar que oldCode existe en el archivo actual
-      if (!target.currentCode.includes(parsed.oldCode.trim())) {
-        console.warn(`[SelfMutation] oldCode no encontrado en ${target.relativePath} — descartando propuesta`);
-        return null;
+      // Normalizar path en el resultado
+      const filePath = (parsed.file || normalizedPath).replace(/\\/g, '/');
+
+      // Verificar que oldCode existe en el archivo actual (con tolerancia)
+      const trimmedOld = parsed.oldCode.trim();
+      if (!target.currentCode.includes(trimmedOld)) {
+        // Segundo intento: buscar sin los primeros/últimos espacios
+        const oldLines = trimmedOld.split('\n');
+        const coreOld = oldLines.map((l: string) => l.trim()).filter((l: string) => l.length > 0).join('\n');
+        const coreCurrent = target.currentCode.split('\n').map((l: string) => l.trim()).join('\n');
+
+        if (!coreCurrent.includes(coreOld)) {
+          console.warn(`[SelfMutation] oldCode no encontrado en ${normalizedPath} — descartando propuesta`);
+          return null;
+        }
       }
 
       return {
-        file: target.relativePath,
+        file: filePath,
         description: parsed.description || 'Mejora de código',
         reasoning: parsed.reasoning || '',
         oldCode: parsed.oldCode,
