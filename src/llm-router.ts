@@ -54,18 +54,28 @@ export class RouterBackedProvider extends GLM47Provider {
 export class LLMRouter {
   private providers: Map<string, LLMProviderInfo> = new Map();
   private glmProvider: GLM47Provider | null = null;
-  private defaultProviderId: string = 'zhipuai';
+  private defaultProviderId: string = '';
 
   constructor(glmApiKey: string) {
-    // GLM-4 es opcional: solo se crea si la key tiene formato válido
-    if (glmApiKey && glmApiKey.includes('.')) {
+    // GLM-4 / ZAI es opcional: solo se crea si la key tiene formato valido
+    // ZAI_API_KEY se mapea a GLM_API_KEY en config.ts
+    const effectiveKey = glmApiKey || process.env.ZAI_API_KEY || '';
+    if (effectiveKey && effectiveKey.includes('.')) {
       try {
-        this.glmProvider = new GLM47Provider({ apiKey: glmApiKey });
+        this.glmProvider = new GLM47Provider({ apiKey: effectiveKey });
+        console.log('✅ LLM Router: ZAI/GLM-4 disponible como fallback');
       } catch {
-        console.warn('[LLMRouter] GLM_API_KEY inválida — GLM-4 no disponible como fallback');
+        console.warn('[LLMRouter] ZAI_API_KEY invalida — GLM-4 no disponible como fallback');
       }
     }
     this.registerProviders();
+
+    // Aplicar PREFERRED_PROVIDER si esta configurado
+    const preferred = process.env.PREFERRED_PROVIDER;
+    if (preferred && this.providers.has(preferred)) {
+      this.defaultProviderId = preferred;
+      console.log(`🔗 LLM Router: Proveedor preferido = ${preferred}`);
+    }
   }
 
   private registerProviders(): void {
@@ -198,6 +208,13 @@ export class LLMRouter {
     const lower = task.toLowerCase();
     const available = Array.from(this.providers.values()).filter(p => p.isAvailable());
     if (available.length === 0) return null;
+
+    // Si hay un proveedor preferido configurado y esta disponible, usarlo
+    if (this.defaultProviderId) {
+      const preferred = available.find(p => p.id === this.defaultProviderId);
+      if (preferred) return preferred;
+    }
+
     if (lower.includes('codigo') || lower.includes('code') || lower.includes('programar') || lower.includes('refactor') || lower.includes('implementar') || lower.includes('api')) {
       const deepseek = available.find(p => p.id === 'deepseek');
       if (deepseek) return deepseek;

@@ -1,5 +1,5 @@
 // ============================================================
-// src/config.ts - Configuración Validada con Zod + dotenv
+// src/config.ts - Configuracion Validada con Zod + dotenv
 // ============================================================
 
 import { z } from 'zod';
@@ -13,30 +13,31 @@ if (existsSync(envPath)) {
   dotenv.config({ path: envPath });
 }
 
-const ConfigSchema = z.object({
-  // --- Obligatorios ---
-  // GLM_API_KEY es opcional al arrancar. El dashboard funciona sin ella.
-  // El usuario puede configurarla desde la UI del dashboard.
-  GLM_API_KEY: z.string().default(''),
+// --- Alias: ZAI_API_KEY mapea a GLM_API_KEY internamente ---
+if (process.env.ZAI_API_KEY && !process.env.GLM_API_KEY) {
+  process.env.GLM_API_KEY = process.env.ZAI_API_KEY;
+}
 
-  // --- Cloudflare Workers AI (Gratis - Llama 3.3 70B) ---
+const ConfigSchema = z.object({
+  // --- API Keys de IA (todas opcionales, al menos una recomendada) ---
+  GLM_API_KEY: z.string().default(''),
+  ZAI_API_KEY: z.string().optional(),
+  DEEPSEEK_API_KEY: z.string().optional(),
   CLOUDFLARE_API_KEY: z.string().optional(),
   CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
-
-  // --- Otros proveedores LLM gratuitos ---
   GROQ_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
-  OPENROUTER_API_KEY: z.string().optional(),
-  DEEPSEEK_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  OLLAMA_HOST: z.string().optional(),
 
-  // --- Autenticación separada ---
-  // API_AUTH_KEY se usa para autenticar Dashboard y REST API.
-  // Si no se configura, se usa GLM_API_KEY como fallback (no recomendado para producción).
+  // --- Autenticacion API ---
   API_AUTH_KEY: z.string().min(1).optional(),
 
   // --- CORS ---
-  ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001'),
+  ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3003'),
 
   // --- General con defaults ---
   WORKSPACE_ROOT: z.string().default(resolve(process.cwd(), 'workspace')),
@@ -45,8 +46,16 @@ const ConfigSchema = z.object({
     .default('false')
     .transform(v => v === 'true'),
   AGENT_MAX_STEPS: z.coerce.number().int().min(1).max(100).default(25),
-  DASHBOARD_PORT: z.coerce.number().int().min(1024).max(65535).default(3001),
+  DASHBOARD_PORT: z.coerce.number().int().min(1024).max(65535).default(3003),
   API_PORT: z.coerce.number().int().min(1024).max(65535).default(3000),
+
+  // --- Preferencias de modelo ---
+  PREFERRED_PROVIDER: z.string().optional(),
+  PREFERRED_MODEL: z.string().optional(),
+  AUTO_MUTATION: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform(v => v === 'true'),
 
   // --- GitHub (Opcional) ---
   GITHUB_OWNER: z.string().optional(),
@@ -67,24 +76,16 @@ const ConfigSchema = z.object({
   // --- Slack Webhook (Opcional) ---
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 
-  // --- DevMind 3.0: Multi-Modelo (Opcional) ---
-  OPENAI_API_KEY: z.string().optional(),
-  ANTHROPIC_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
-  OLLAMA_HOST: z.string().optional(),
-  PREFERRED_MODEL: z.string().optional(),
-  AUTO_MUTATION: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform(v => v === 'true'),
-
-  // --- DevMind 3.0: A2A Protocol (Opcional) ---
+  // --- A2A Protocol (Opcional) ---
   A2A_ENABLED: z
     .enum(['true', 'false'])
     .default('false')
     .transform(v => v === 'true'),
   A2A_NODE_NAME: z.string().default('DevMind-Agent'),
   A2A_PORT: z.coerce.number().int().min(1024).max(65535).default(4000),
+
+  // --- Backward compat ---
+  GOOGLE_API_KEY: z.string().optional(),
 });
 
 export type DevMindConfig = z.infer<typeof ConfigSchema>;
@@ -92,8 +93,7 @@ export type DevMindConfig = z.infer<typeof ConfigSchema>;
 let _config: DevMindConfig | null = null;
 
 /**
- * Obtiene la configuración validada. Solo parsea una vez.
- * Lanza un error claro si falta alguna variable obligatoria.
+ * Obtiene la configuracion validada. Solo parsea una vez.
  */
 export function getConfig(): DevMindConfig {
   if (_config) return _config;
@@ -104,8 +104,8 @@ export function getConfig(): DevMindConfig {
   } catch (err) {
     if (err instanceof z.ZodError) {
       const issues = err.issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-      console.error(`\n❌ Configuración inválida:\n${issues}\n`);
-      console.error('💡 Creá un archivo .env basado en .env.example con tus valores.');
+      console.error(`\n❌ Configuracion invalida:\n${issues}\n`);
+      console.error('💡 Crea un archivo .env basado en .env.example con tus valores.');
       process.exit(1);
     }
     throw err;
@@ -113,7 +113,7 @@ export function getConfig(): DevMindConfig {
 }
 
 /**
- * Verifica si hay configuración de GitHub completa
+ * Verifica si hay configuracion de GitHub completa
  */
 export function hasGitHubConfig(config: DevMindConfig): boolean {
   return !!(config.GITHUB_OWNER && config.GITHUB_REPO && config.GITHUB_TOKEN);
