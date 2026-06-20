@@ -570,10 +570,17 @@ export class DashboardServer {
       // API: Auto-Mutation — Generar plan de mejoras
       if (url === '/api/mutation/propose' && method === 'POST') {
         try {
+          // Auto-inicializar el engine si no existe
           if (!this.mutationEngine) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Ejecutá /api/mutation/analyze primero' }));
-            return;
+            if (!this.config.llmRouter) {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Se requiere un LLM para auto-mutación. Configurá una API Key.' }));
+              return;
+            }
+            const { SelfMutationEngine } = await import('./core/self-mutation.js');
+            const projectRoot = this.config.agentCore?.workspaceRoot || process.cwd();
+            const root = resolve(projectRoot, '..');
+            this.mutationEngine = new SelfMutationEngine(root, this.config.llmRouter);
           }
 
           this.log('info', 'Auto-Mutation: generando plan de mejoras...');

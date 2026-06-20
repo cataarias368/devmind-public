@@ -214,7 +214,8 @@ export class SelfMutationEngine {
       // 3. Aplicar cada propuesta (reemplazo de oldCode → newCode)
       for (const proposal of plan.proposal) {
         try {
-          const filePath = resolve(this.projectRoot, proposal.file);
+          // Normalizar backslashes a forward slashes para resolve()
+          const filePath = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
           if (!existsSync(filePath)) {
             errors.push(`Archivo no encontrado: ${proposal.file}`);
             continue;
@@ -285,11 +286,15 @@ export class SelfMutationEngine {
       if (!existsSync(backupPath)) return false;
 
       for (const proposal of plan.proposal) {
-        const backupFile = resolve(backupPath, proposal.file.replace(/\//g, '_'));
-        const targetFile = resolve(this.projectRoot, proposal.file);
+        // Normalizar ambos tipos de slashes
+        const normalizedFile = proposal.file.replace(/[\\/]/g, '_');
+        const backupFile = resolve(backupPath, normalizedFile);
+        const targetFile = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
         if (existsSync(backupFile)) {
           copyFileSync(backupFile, targetFile);
           console.log(`[SelfMutation] Revertido: ${proposal.file}`);
+        } else {
+          console.warn(`[SelfMutation] Backup no encontrado: ${backupFile}`);
         }
       }
 
@@ -553,10 +558,15 @@ RULES:
     mkdirSync(backupPath, { recursive: true });
 
     for (const proposal of plan.proposal) {
-      const sourceFile = resolve(this.projectRoot, proposal.file);
+      // Normalizar path: tanto / como \ se convierten en _
+      const normalizedFile = proposal.file.replace(/[\\/]/g, '_');
+      const sourceFile = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
       if (existsSync(sourceFile)) {
-        const backupFile = resolve(backupPath, proposal.file.replace(/\//g, '_'));
+        const backupFile = resolve(backupPath, normalizedFile);
         copyFileSync(sourceFile, backupFile);
+        console.log(`[SelfMutation] Backup: ${sourceFile} → ${backupFile}`);
+      } else {
+        console.warn(`[SelfMutation] No se encontró ${sourceFile} para backup`);
       }
     }
   }
