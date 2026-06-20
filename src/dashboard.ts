@@ -585,9 +585,7 @@ export class DashboardServer {
 
           this.log('info', 'Auto-Mutation: generando plan de mejoras...');
           const targets = await this.mutationEngine.analyze();
-          
-          // Usar proposeBatch (1 sola llamada LLM) en vez de propose (N llamadas)
-          const plan = await this.mutationEngine.proposeBatch(targets);
+          const plan = await this.mutationEngine.propose(targets);
 
           this.log('info', `Auto-Mutation: plan ${plan.id} — ${plan.proposal.length} propuestas`);
 
