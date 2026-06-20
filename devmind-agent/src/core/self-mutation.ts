@@ -183,7 +183,7 @@ export class SelfMutationEngine {
         // --- Duplicate function names ---
         const funcNames: string[] = [];
         const funcRegex =
-          /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\()/g;
+          /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\())/g;
         let match: RegExpExecArray | null;
         while ((match = funcRegex.exec(code)) !== null) {
           const name = match[1] || match[2];
@@ -322,7 +322,7 @@ export class SelfMutationEngine {
     if (this.config.autoApply) {
       plan.status = 'approved';
       if (!this.config.dryRun) {
-        return this.apply(planId);
+        await this.apply(planId);
       }
     }
 

@@ -5,6 +5,7 @@
 import { resolve } from 'path';
 import { getConfig, hasGitHubConfig, hasBotConfig } from './config.js';
 import { GLM47Provider } from './llm-provider.js';
+import { LLMRouter, RouterBackedProvider } from './llm-router.js';
 import { CogViewProvider } from './image-provider.js';
 import { CheckpointManager } from './checkpoint.js';
 import { MemoryStore } from './memory.js';
@@ -22,6 +23,7 @@ import { Monitor } from './monitor.js';
 import { scanAvailableModels } from './llm-scanner.js';
 import { A2AProtocol } from './a2a-protocol.js';
 import { VideoGenerator } from './video/index.js';
+import { SelfMutationEngine } from './core/self-mutation.js';
 import type { AgentCore } from './types.js';
 
 async function main(): Promise<void> {
@@ -32,10 +34,30 @@ async function main(): Promise<void> {
   console.log('🧠 DevMind Agent v3.0.0');
   console.log(`📂 Workspace: ${workspaceRoot}`);
 
-  // --- Inicializar proveedores globales ---
-  const llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+  // --- Inicializar LLM Router (multi-provider) ---
+  const llmRouter = new LLMRouter(config.GLM_API_KEY);
+
+  // --- Inicializar proveedor principal ---
+  // Si el router tiene proveedores disponibles, usar RouterBackedProvider
+  // Si no, usar GLM47Provider directamente (requiere GLM_API_KEY)
+  let llmProvider: GLM47Provider | RouterBackedProvider;
+  const activeProviders = llmRouter.getActiveProviders();
+
+  if (activeProviders.length > 0) {
+    llmProvider = new RouterBackedProvider(llmRouter);
+    console.log(`🔗 Usando LLM Router con ${activeProviders.length} proveedor(es)`);
+  } else if (config.GLM_API_KEY) {
+    llmProvider = new GLM47Provider({ apiKey: config.GLM_API_KEY });
+    console.log('🤖 Usando GLM-4 como proveedor principal');
+  } else {
+    console.error('❌ No hay proveedores LLM disponibles. Configura al menos una API key en .env');
+    process.exit(1);
+  }
+
+  // GLM_API_KEY puede ser undefined, usar string vacío como fallback para CogViewProvider
+  const imageApiKey = config.GLM_API_KEY || 'dummy-key';
   const imageProvider = new CogViewProvider({
-    apiKey: config.GLM_API_KEY,
+    apiKey: imageApiKey,
     outputDir: resolve(workspaceRoot, 'generated_images'),
   });
   const checkpointManager = new CheckpointManager(workspaceRoot);
@@ -188,14 +210,32 @@ async function main(): Promise<void> {
   // 1. MODO DASHBOARD WEB
   if (args.includes('--dashboard')) {
     await taskManager.startAllTasks();
+
+    // Initialize Self-Mutation Engine for the dashboard
+    const mutationEngine = new SelfMutationEngine(
+      resolve(process.cwd()),
+      llmRouter,
+      {
+        maxFilesPerPlan: 5,
+        maxLinesPerFile: 200,
+        autoApply: config.AUTO_MUTATION,
+        dryRun: false,
+        excludeDirs: ['node_modules', 'dist', '.git', '.devmind'],
+      },
+    );
+
+    const apiKey = config.API_AUTH_KEY || config.GLM_API_KEY || 'devmind-local-dev';
     const dashboard = new DashboardServer({
       port: config.DASHBOARD_PORT,
       agentCore,
-      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
+      apiKey,
       allowedOrigins: config.ALLOWED_ORIGINS.split(','),
+      mutationEngine,
+      llmRouter,
     });
     await dashboard.start();
     console.log(`🖥️ Dashboard corriendo en http://localhost:${config.DASHBOARD_PORT}`);
+    console.log('🧬 Panel de Auto-Mutación disponible');
     console.log('Presioná Ctrl+C para detener.');
 
     process.on('SIGINT', async () => {
@@ -211,7 +251,7 @@ async function main(): Promise<void> {
     const server = new RestAPIServer({
       port: config.API_PORT,
       agentCore,
-      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY,
+      apiKey: config.API_AUTH_KEY || config.GLM_API_KEY || 'devmind-local-dev',
       allowedOrigins: config.ALLOWED_ORIGINS.split(','),
     });
     await server.start();

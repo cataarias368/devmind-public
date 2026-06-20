@@ -14,8 +14,14 @@ if (existsSync(envPath)) {
 }
 
 const ConfigSchema = z.object({
-  // --- Obligatorios ---
-  GLM_API_KEY: z.string().min(1, 'GLM_API_KEY es obligatoria. Obtenla en https://open.bigmodel.cn'),
+  // --- LLM API Keys (al menos una es necesaria) ---
+  GLM_API_KEY: z.string().optional(),
+  CLOUDFLARE_API_KEY: z.string().optional(),
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  GOOGLE_AI_API_KEY: z.string().optional(),
+  MISTRAL_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
 
   // --- Autenticación separada ---
   // API_AUTH_KEY se usa para autenticar Dashboard y REST API.
@@ -57,7 +63,6 @@ const ConfigSchema = z.object({
   // --- DevMind 3.0: Multi-Modelo (Opcional) ---
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
   OLLAMA_HOST: z.string().optional(),
   PREFERRED_MODEL: z.string().optional(),
   AUTO_MUTATION: z
@@ -87,6 +92,25 @@ export function getConfig(): DevMindConfig {
 
   try {
     _config = ConfigSchema.parse(process.env);
+
+    // Validar que al menos un proveedor LLM esté configurado
+    const hasAnyProvider = !!(
+      _config.GLM_API_KEY ||
+      _config.CLOUDFLARE_API_KEY ||
+      _config.GROQ_API_KEY ||
+      _config.GOOGLE_AI_API_KEY ||
+      _config.MISTRAL_API_KEY ||
+      _config.OPENROUTER_API_KEY ||
+      _config.OPENAI_API_KEY ||
+      _config.ANTHROPIC_API_KEY
+    );
+    if (!hasAnyProvider) {
+      console.error('\n❌ No hay ningún proveedor LLM configurado.');
+      console.error('💡 Configurá al menos una API key en .env:');
+      console.error('   CLOUDFLARE_API_KEY, GROQ_API_KEY, GLM_API_KEY, GOOGLE_AI_API_KEY, etc.');
+      process.exit(1);
+    }
+
     return _config;
   } catch (err) {
     if (err instanceof z.ZodError) {
