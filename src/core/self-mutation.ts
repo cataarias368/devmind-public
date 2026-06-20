@@ -327,7 +327,7 @@ export class SelfMutationEngine {
     const normalizedPath = target.relativePath.replace(/\\/g, '/');
 
     const systemPrompt = `You are DevMind Self-Mutation, a system that improves its own source code.
-Analyze the file ${normalizedPath} and propose ONE concrete improvement.
+Analyze the file ${normalizedPath} and propose ONE small, safe improvement.
 
 Detected issues:
 ${target.issues.map(i => `- ${i}`).join('\n')}
@@ -339,17 +339,22 @@ Current code (first ${this.config.maxLinesPerFile || 200} lines):
 ${target.currentCode.split('\n').slice(0, this.config.maxLinesPerFile || 200).join('\n')}
 
 Respond with EXACTLY this JSON format (no markdown, no backticks, no code fences, pure JSON only):
-{"file":"${normalizedPath}","description":"Short description","reasoning":"Why this improvement is beneficial","oldCode":"exact code to replace (at least 3 lines)","newCode":"improved code","riskLevel":"low","category":"performance"}
+{"file":"${normalizedPath}","description":"Short description","reasoning":"Why this improvement is beneficial","oldCode":"exact code to replace (3-10 lines)","newCode":"improved code","riskLevel":"low","category":"bugfix"}
 
-RULES:
-- Only propose safe, reversible changes
+STRICT RULES:
+- ONLY propose changes that will NOT break TypeScript compilation
+- Do NOT change sync functions to async (breaks compilation)
+- Do NOT add new imports unless absolutely necessary
 - Do NOT remove existing functionality
-- Do NOT change public interfaces
-- oldCode must be EXACT code from the file (character-perfect match)
-- newCode must be complete, functional TypeScript code
+- Do NOT change function signatures or public interfaces
+- Do NOT change readFileSync to readFile (requires async refactor)
+- Do NOT change require() to import (breaks ESM/CJS compatibility)
+- PREFER: adding console.error to empty catch blocks, fixing typos in comments, adding missing error handling, replacing deprecated patterns
+- oldCode must be EXACT code from the file (character-perfect match, 3-10 lines)
+- newCode must be complete, functional TypeScript that compiles without errors
+- Keep changes SMALL and CONSERVATIVE (3-10 lines changed max)
 - Use forward slashes in file paths (src/file.ts not src\\file.ts)
-- Keep oldCode to 3-15 lines for reliable matching
-- If no clear improvement, respond with: {"skip":true}
+- If no safe improvement exists, respond with: {"skip":true}
 - IMPORTANT: Output ONLY the JSON object, nothing else`;
 
     try {
