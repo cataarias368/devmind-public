@@ -1452,6 +1452,165 @@ input,textarea{font-family:inherit}
 
   document.getElementById('healthCheckBtn').addEventListener('click',runHealthCheck);
 
+  // ═══════════════════════════════════════════════════════════════
+  // AUTO-MUTATION ENGINE — Definido ANTES de init() para estar
+  // siempre disponible, sin importar si init() falla o no
+  // ═══════════════════════════════════════════════════════════════
+  var mutationPlanId=null;
+
+  window.mutationAnalyze=async function(){
+    var btn=document.getElementById('btn-mutate-analyze');
+    var status=document.getElementById('mut-status');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Analizando...';}
+    if(status){status.style.display='block';status.style.background='rgba(88,166,255,0.1)';status.style.border='1px solid rgba(88,166,255,0.2)';status.style.color='#58a6ff';status.textContent='🔍 Escaneando código fuente...';}
+    try{
+      var r=await fetch('/api/mutation/analyze');
+      var data=await r.json();
+      if(data.success){
+        if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.totalTargets+' archivos con mejoras posibles';}
+        var targetsDiv=document.getElementById('mut-targets');
+        var targetsList=document.getElementById('mut-targets-list');
+        if(targetsDiv)targetsDiv.style.display='block';
+        if(targetsList)targetsList.innerHTML='';
+        if(data.targets){for(var i=0;i<data.targets.length;i++){
+          var t=data.targets[i];
+          var item=document.createElement('div');
+          item.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.75rem';
+          var name=document.createElement('div');
+          name.style.cssText='color:#e6edf5;font-size:0.85rem;font-weight:600;margin-bottom:0.25rem';
+          name.textContent=t.file;
+          var issues=document.createElement('div');
+          issues.style.cssText='color:#8b9bb5;font-size:0.75rem';
+          issues.textContent=t.issues.length+' issues, '+t.improvementAreas.length+' mejoras — '+t.lineCount+' líneas';
+          item.appendChild(name);item.appendChild(issues);
+          if(targetsList)targetsList.appendChild(item);
+        }}
+        var proposeBtn=document.getElementById('btn-mutate-propose');
+        if(proposeBtn){proposeBtn.disabled=false;proposeBtn.style.opacity='1';}
+      }else{
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+(data.error||'Error desconocido');}
+      }
+    }catch(e){
+      if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión: '+e.message;}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='🔍 Analizar Código';}
+    }
+  };
+
+  window.mutationPropose=async function(){
+    var btn=document.getElementById('btn-mutate-propose');
+    var status=document.getElementById('mut-status');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Generando...';}
+    if(status){status.style.display='block';status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='🧬 El LLM está analizando las mejoras... (30-60s)';}
+    try{
+      var r=await fetch('/api/mutation/propose',{method:'POST'});
+      var data=await r.json();
+      if(data.success&&data.plan){
+        mutationPlanId=data.plan.id;
+        if(status){status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='📝 '+data.plan.proposals.length+' propuestas generadas';}
+        var proposalsDiv=document.getElementById('mut-proposals');
+        var proposalsList=document.getElementById('mut-proposals-list');
+        if(proposalsDiv)proposalsDiv.style.display='block';
+        if(proposalsList)proposalsList.innerHTML='';
+        var riskColors={low:'#3fb950',medium:'#d29922',high:'#f85149'};
+        var catIcons={performance:'⚡',feature:'✨',bugfix:'🐛',refactor:'🔄',security:'🔒',dependency:'📦',reliability:'🛡️'};
+        for(var i=0;i<data.plan.proposals.length;i++){
+          var p=data.plan.proposals[i];
+          var card=document.createElement('div');
+          card.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(163,113,247,0.2);border-radius:10px;padding:1rem';
+          card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem"><span style="color:#e6edf5;font-weight:600;font-size:0.9rem">'+(catIcons[p.category]||'📝')+' '+p.description+'</span><span style="background:'+(riskColors[p.riskLevel]||riskColors.medium)+'22;border:1px solid '+(riskColors[p.riskLevel]||riskColors.medium)+'44;border-radius:4px;padding:2px 8px;font-size:0.7rem;color:'+(riskColors[p.riskLevel]||riskColors.medium)+'">'+(p.riskLevel||'medium').toUpperCase()+'</span></div><div style="color:#58a6ff;font-size:0.8rem;margin-bottom:0.5rem">📁 '+p.file+'</div><div style="color:#8b9bb5;font-size:0.8rem;margin-bottom:0.75rem">'+p.reasoning+'</div><div style="font-family:monospace;font-size:0.75rem;background:rgba(0,0,0,0.3);border-radius:6px;padding:0.5rem;overflow-x:auto"><div style="color:#f85149">- '+(p.oldCodePreview||'').replace(/</g,'&lt;').split('\\n').join('<br>- ')+'</div><div style="color:#3fb950;margin-top:0.5rem">+ '+(p.newCodePreview||'').replace(/</g,'&lt;').split('\\n').join('<br>+ ')+'</div></div>';
+          if(proposalsList)proposalsList.appendChild(card);
+        }
+        var applyBtn=document.getElementById('btn-mutate-apply');
+        if(applyBtn){applyBtn.disabled=false;applyBtn.style.opacity='1';}
+      }else{
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+(data.error||'No se generaron propuestas');}
+      }
+    }catch(e){
+      if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión: '+e.message;}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='📝 Generar Propuestas';}
+    }
+  };
+
+  window.mutationApply=async function(){
+    if(!mutationPlanId){alert('No hay plan pendiente. Generá propuestas primero.');return;}
+    if(!confirm('¿Aplicar las mejoras propuestas? Se creará backup y se verificará compilación.'))return;
+    var btn=document.getElementById('btn-mutate-apply');
+    var status=document.getElementById('mut-status');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Aplicando...';}
+    if(status){status.style.display='block';status.style.background='rgba(247,120,186,0.1)';status.style.border='1px solid rgba(247,120,186,0.2)';status.style.color='#f778ba';status.textContent='🚀 Aplicando cambios...';}
+    try{
+      var r=await fetch('/api/mutation/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({planId:mutationPlanId})});
+      var data=await r.json();
+      if(data.success){
+        if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.proposals.length+' mejoras aplicadas — Compilación OK';}
+        mutationPlanId=null;
+        var applyBtn=document.getElementById('btn-mutate-apply');
+        if(applyBtn){applyBtn.disabled=true;applyBtn.style.opacity='0.5';}
+        window.mutationLoadHistory();
+      }else{
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+(data.errors||[]).join(', ')+' — Rollback automático';}
+      }
+    }catch(e){
+      if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión: '+e.message;}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='🚀 Aplicar Mejoras';}
+    }
+  };
+
+  window.mutationRollback=async function(){
+    if(!confirm('¿Revertir la última mutación aplicada?'))return;
+    var btn=document.getElementById('btn-mutate-rollback');
+    var status=document.getElementById('mut-status');
+    if(btn){btn.disabled=true;btn.textContent='⏳ Revirtiendo...';}
+    if(status){status.style.display='block';status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='↩️ Revirtiendo cambios...';}
+    try{
+      var hr=await fetch('/api/mutation/history');
+      var hd=await hr.json();
+      var lastApplied=null;
+      if(hd.history){for(var i=0;i<hd.history.length;i++){if(hd.history[i].status==='applied'){lastApplied=hd.history[i];break;}}}
+      if(!lastApplied){
+        if(status){status.style.color='#d29922';status.textContent='⚠️ No hay mutaciones aplicadas para revertir';}
+        return;
+      }
+      var r=await fetch('/api/mutation/rollback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({planId:lastApplied.id})});
+      var data=await r.json();
+      if(data.success){
+        if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ Cambios revertidos exitosamente';}
+        window.mutationLoadHistory();
+      }else{
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error: '+(data.error||'No se pudo revertir');}
+      }
+    }catch(e){
+      if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión: '+e.message;}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='↩️ Rollback';}
+    }
+  };
+
+  window.mutationLoadHistory=async function(){
+    try{
+      var r=await fetch('/api/mutation/history');
+      var data=await r.json();
+      var list=document.getElementById('mut-history-list');
+      if(list&&data.history&&data.history.length>0){
+        list.innerHTML='';
+        var statusColors={proposed:'#58a6ff',approved:'#a371f7',applied:'#3fb950',failed:'#f85149',rolled_back:'#d29922'};
+        for(var i=data.history.length-1;i>=0;i--){
+          var h=data.history[i];
+          var item=document.createElement('div');
+          item.style.cssText='background:rgba(255,255,255,0.03);border-radius:6px;padding:0.5rem;margin-bottom:0.25rem;display:flex;justify-content:space-between';
+          item.innerHTML='<span style="color:#8b9bb5;font-size:0.8rem">'+h.summary+'</span><span style="color:'+(statusColors[h.status]||'#8b9bb5')+';font-size:0.75rem">'+h.status+'</span>';
+          list.appendChild(item);
+        }
+      }
+    }catch(e){}
+  };
+
+  // Cargar historial al inicio
+  window.mutationLoadHistory();
+
   // ─── Initialization ───
   async function init(){
     addConsoleLog('info','DevMind Cockpit iniciando...');
@@ -1873,197 +2032,6 @@ input,textarea{font-family:inherit}
         if(vidStatus){vidStatus.textContent='❌ Tu navegador no soporta grabación de video. Probá Chrome o Edge.';}
       }
     };
-
-  // === AUTO-MUTATION ENGINE (definido FUERA de init para estar siempre disponible) ===
-  let mutationPlanId=null;
-
-  window.mutationAnalyze=async function(){
-      const btn=document.getElementById('btn-mutate-analyze');
-      const status=document.getElementById('mut-status');
-      if(btn){btn.disabled=true;btn.textContent='⏳ Analizando...';}
-      if(status){status.style.display='block';status.style.background='rgba(88,166,255,0.1)';status.style.border='1px solid rgba(88,166,255,0.2)';status.style.color='#58a6ff';status.textContent='🔍 Escaneando código fuente...';}
-
-      try{
-        const r=await fetch('/api/mutation/analyze');
-        const data=await r.json();
-
-        if(data.success){
-          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.totalTargets+' archivos con mejoras posibles';}
-
-          // Mostrar targets
-          const targetsDiv=document.getElementById('mut-targets');
-          const targetsList=document.getElementById('mut-targets-list');
-          if(targetsDiv) targetsDiv.style.display='block';
-          if(targetsList) targetsList.innerHTML='';
-
-          for(const t of data.targets){
-            const item=document.createElement('div');
-            item.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.75rem';
-            const name=document.createElement('div');
-            name.style.cssText='color:#e6edf5;font-size:0.85rem;font-weight:600;margin-bottom:0.25rem';
-            name.textContent=t.file;
-            const issues=document.createElement('div');
-            issues.style.cssText='color:#8b9bb5;font-size:0.75rem';
-            issues.textContent=t.issues.length+' issues, '+t.improvementAreas.length+' mejoras — '+t.lineCount+' líneas';
-            item.appendChild(name);item.appendChild(issues);
-            if(targetsList) targetsList.appendChild(item);
-          }
-
-          // Habilitar botón Proponer
-          const proposeBtn=document.getElementById('btn-mutate-propose');
-          if(proposeBtn){proposeBtn.disabled=false;proposeBtn.style.opacity='1';}
-        }else{
-          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+data.error;}
-        }
-      }catch(e){
-        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='🔍 Analizar Código';}
-      }
-    };
-
-    window.mutationPropose=async function(){
-      const btn=document.getElementById('btn-mutate-propose');
-      const status=document.getElementById('mut-status');
-      if(btn){btn.disabled=true;btn.textContent='⏳ Generando...';}
-      if(status){status.style.display='block';status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='🧬 El LLM está analizando las mejoras posibles... Esto puede tardar 30-60 segundos';}
-
-      try{
-        const r=await fetch('/api/mutation/propose',{method:'POST'});
-        const data=await r.json();
-
-        if(data.success&&data.plan){
-          mutationPlanId=data.plan.id;
-          if(status){status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='📝 '+data.plan.proposals.length+' propuestas generadas — Revisá antes de aplicar';}
-
-          // Mostrar propuestas
-          const proposalsDiv=document.getElementById('mut-proposals');
-          const proposalsList=document.getElementById('mut-proposals-list');
-          if(proposalsDiv) proposalsDiv.style.display='block';
-          if(proposalsList) proposalsList.innerHTML='';
-
-          for(const p of data.plan.proposals){
-            const card=document.createElement('div');
-            card.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(163,113,247,0.2);border-radius:10px;padding:1rem';
-            const riskColors={low:'#3fb950',medium:'#d29922',high:'#f85149'};
-            const catIcons={performance:'⚡',feature:'✨',bugfix:'🐛',refactor:'🔄',security:'🔒',dependency:'📦',reliability:'🛡️'};
-            const header=document.createElement('div');
-            header.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem';
-            header.innerHTML='<span style="color:#e6edf5;font-weight:600;font-size:0.9rem">'+(catIcons[p.category]||'📝')+' '+p.description+'</span><span style="background:'+riskColors[p.riskLevel]+'22;border:1px solid '+riskColors[p.riskLevel]+'44;border-radius:4px;padding:2px 8px;font-size:0.7rem;color:'+riskColors[p.riskLevel]+'">'+p.riskLevel.toUpperCase()+'</span>';
-            const file=document.createElement('div');
-            file.style.cssText='color:#58a6ff;font-size:0.8rem;margin-bottom:0.5rem';
-            file.textContent='📁 '+p.file;
-            const reason=document.createElement('div');
-            reason.style.cssText='color:#8b9bb5;font-size:0.8rem;margin-bottom:0.75rem';
-            reason.textContent=p.reasoning;
-            const diff=document.createElement('div');
-            diff.style.cssText='font-family:monospace;font-size:0.75rem;background:rgba(0,0,0,0.3);border-radius:6px;padding:0.5rem;overflow-x:auto';
-            diff.innerHTML='<div style="color:#f85149">- '+p.oldCodePreview.replace(/</g,'&lt;').split('\\n').join('<br>- ')+'</div><div style="color:#3fb950;margin-top:0.5rem">+ '+p.newCodePreview.replace(/</g,'&lt;').split('\\n').join('<br>+ ')+'</div>';
-            card.appendChild(header);card.appendChild(file);card.appendChild(reason);card.appendChild(diff);
-            if(proposalsList) proposalsList.appendChild(card);
-          }
-
-          // Habilitar botón Aplicar
-          const applyBtn=document.getElementById('btn-mutate-apply');
-          if(applyBtn){applyBtn.disabled=false;applyBtn.style.opacity='1';}
-        }else{
-          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+(data.error||'No se generaron propuestas');}
-        }
-      }catch(e){
-        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='📝 Generar Propuestas';}
-      }
-    };
-
-    window.mutationApply=async function(){
-      if(!mutationPlanId) return;
-      if(!confirm('¿Aplicar las mejoras propuestas? Se creará un backup automático y se verificará la compilación.')) return;
-
-      const btn=document.getElementById('btn-mutate-apply');
-      const status=document.getElementById('mut-status');
-      if(btn){btn.disabled=true;btn.textContent='⏳ Aplicando...';}
-      if(status){status.style.display='block';status.style.background='rgba(247,120,186,0.1)';status.style.border='1px solid rgba(247,120,186,0.2)';status.style.color='#f778ba';status.textContent='🚀 Aplicando cambios y verificando compilación...';}
-
-      try{
-        const r=await fetch('/api/mutation/apply',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({planId:mutationPlanId})
-        });
-        const data=await r.json();
-
-        if(data.success){
-          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.proposals.length+' mejoras aplicadas — Compilación OK';}
-          mutationPlanId=null;
-          const applyBtn=document.getElementById('btn-mutate-apply');
-          if(applyBtn){applyBtn.disabled=true;applyBtn.style.opacity='0.5';}
-          // Cargar historial
-          loadMutationHistory();
-        }else{
-          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Falló: '+(data.errors||[]).join(', ')+' — Rollback automático ejecutado';}
-        }
-      }catch(e){
-        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='🚀 Aplicar Mejoras';}
-      }
-    };
-
-    async function loadMutationHistory(){
-      try{
-        const r=await fetch('/api/mutation/history');
-        const data=await r.json();
-        const list=document.getElementById('mut-history-list');
-        if(list&&data.history&&data.history.length>0){
-          list.innerHTML='';
-          for(const h of data.history.reverse()){
-            const item=document.createElement('div');
-            item.style.cssText='background:rgba(255,255,255,0.03);border-radius:6px;padding:0.5rem;margin-bottom:0.25rem;display:flex;justify-content:space-between';
-            const statusColors={proposed:'#58a6ff',approved:'#a371f7',applied:'#3fb950',failed:'#f85149',rolled_back:'#d29922'};
-            item.innerHTML='<span style="color:#8b9bb5;font-size:0.8rem">'+h.summary+'</span><span style="color:'+(statusColors[h.status]||'#8b9bb5')+';font-size:0.75rem">'+h.status+'</span>';
-            list.appendChild(item);
-          }
-        }
-      }catch(e){}
-    }
-
-    window.mutationRollback=async function(){
-      if(!confirm('¿Revertir la última mutación aplicada?')) return;
-      const btn=document.getElementById('btn-mutate-rollback');
-      const status=document.getElementById('mut-status');
-      if(btn){btn.disabled=true;btn.textContent='⏳ Revirtiendo...';}
-      if(status){status.style.display='block';status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='↩️ Revirtiendo cambios...';}
-
-      try{
-        const history=await fetch('/api/mutation/history');
-        const histData=await history.json();
-        const lastApplied=histData.history&&histData.history.find(function(h){return h.status==='applied';});
-        if(!lastApplied){
-          if(status){status.style.color='#d29922';status.textContent='⚠️ No hay mutaciones aplicadas para revertir';}
-          return;
-        }
-        const r=await fetch('/api/mutation/rollback',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({planId:lastApplied.id})
-        });
-        const data=await r.json();
-        if(data.success){
-          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ Cambios revertidos exitosamente';}
-          loadMutationHistory();
-        }else{
-          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error: '+(data.error||'No se pudo revertir');}
-        }
-      }catch(e){
-        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='↩️ Rollback';}
-      }
-    };
-
-  // Cargar historial de mutaciones al inicio (FUERA de init)
-  loadMutationHistory();
 
   init();
 })();
