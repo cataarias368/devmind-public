@@ -1,0 +1,820 @@
+     1→     1→// ============================================================
+     2→     2→// src/core/self-mutation.ts - Self-Modifying Code Engine
+     3→     3→// ============================================================
+     4→     4→//
+     5→     5→// Allows DevMind Agent to analyze its own source code, propose
+     6→     6→// improvements via LLM, and apply them safely with backup and
+     7→     7→// rollback. All changes are conservative, small, and verified
+     8→     8→// by TypeScript compilation before being committed.
+     9→     9→// ============================================================
+    10→    10→
+    11→    11→import {
+    12→    12→  readFileSync,
+    13→    13→  writeFileSync,
+    14→    14→  existsSync,
+    15→    15→  mkdirSync,
+    16→    16→  copyFileSync,
+    17→    17→  readdirSync,
+    18→    18→  statSync,
+    19→    19→} from 'fs';
+    20→    20→import { resolve, join, relative } from 'path';
+    21→    21→import { execSync } from 'child_process';
+    22→    22→import { LLMRouter } from '../llm-router.js';
+    23→    23→import type { LLMMessage } from '../types.js';
+    24→    24→
+    25→    25→// ----------------------------------------------------------------
+    26→    26→// Types & Interfaces
+    27→    27→// ----------------------------------------------------------------
+    28→    28→
+    29→    29→/** Callback invoked before applying a mutation plan; return false to abort. */
+    30→    30→export type MutationApprovalCallback = (plan: MutationPlan) => Promise<boolean>;
+    31→    31→
+    32→    32→/** Configuration for the self-mutation engine. */
+    33→    33→export interface SelfMutationConfig {
+    34→    34→  maxFilesPerPlan: number;
+    35→    35→  maxLinesPerFile: number;
+    36→    36→  autoApply: boolean;
+    37→    37→  dryRun: boolean;
+    38→    38→  excludeDirs: string[];
+    39→    39→  onBeforeApply?: MutationApprovalCallback;
+    40→    40→}
+    41→    41→
+    42→    42→/** A single file that has been analyzed and contains issues. */
+    43→    43→export interface MutationTarget {
+    44→    44→  file: string;
+    45→    45→  relativePath: string;
+    46→    46→  currentCode: string;
+    47→    47→  lineCount: number;
+    48→    48→  issues: string[];
+    49→    49→  improvementAreas: string[];
+    50→    50→}
+    51→    51→
+    52→    52→/** The master plan for a batch of mutations. */
+    53→    53→export interface MutationPlan {
+    54→    54→  id: string;
+    55→    55→  timestamp: number;
+    56→    56→  targets: MutationTarget[];
+    57→    57→  proposal: MutationProposal[];
+    58→    58→  status: 'proposed' | 'approved' | 'applied' | 'failed' | 'rolled_back';
+    59→    59→  backupBranch: string;
+    60→    60→  summary: string;
+    61→    61→}
+    62→    62→
+    63→    63→/** A single proposed change to a single file. */
+    64→    64→export interface MutationProposal {
+    65→    65→  file: string;
+    66→    66→  description: string;
+    67→    67→  reasoning: string;
+    68→    68→  oldCode: string;
+    69→    69→  newCode: string;
+    70→    70→  riskLevel: 'low' | 'medium' | 'high';
+    71→    71→  category:
+    72→    72→    | 'performance'
+    73→    73→    | 'feature'
+    74→    74→    | 'bugfix'
+    75→    75→    | 'refactor'
+    76→    76→    | 'security'
+    77→    77→    | 'dependency'
+    78→    78→    | 'reliability';
+    79→    79→}
+    80→    80→
+    81→    81→/** Result of applying a mutation plan. */
+    82→    82→export interface MutationResult {
+    83→    83→  success: boolean;
+    84→    84→  plan: MutationPlan;
+    85→    85→  errors: string[];
+    86→    86→  compilationOk: boolean;
+    87→    87→  testsPass: boolean;
+    88→    88→}
+    89→    89→
+    90→    90→// ----------------------------------------------------------------
+    91→    91→// Default configuration
+    92→    92→// ----------------------------------------------------------------
+    93→    93→
+    94→    94→const DEFAULT_CONFIG: SelfMutationConfig = {
+    95→    95→  maxFilesPerPlan: 5,
+    96→    96→  maxLinesPerFile: 200,
+    97→    97→  autoApply: false,
+    98→    98→  dryRun: false,
+    99→    99→  excludeDirs: ['node_modules', 'dist', '.git', '.devmind'],
+   100→   100→};
+   101→   101→
+   102→   102→// ----------------------------------------------------------------
+   103→   103→// SelfMutationEngine
+   104→   104→// ----------------------------------------------------------------
+   105→   105→
+   106→   106→export class SelfMutationEngine {
+   107→   107→  private projectRoot: string;
+   108→   108→  private srcDir: string;
+   109→   109→  private backupDir: string;
+   110→   110→  private llmRouter: LLMRouter;
+   111→   111→  private config: SelfMutationConfig;
+   112→   112→  private plans: Map<string, MutationPlan> = new Map();
+   113→   113→
+   114→   114→  constructor(
+   115→   115→    projectRoot: string,
+   116→   116→    llmRouter: LLMRouter,
+   117→   117→    config?: Partial<SelfMutationConfig>,
+   118→   118→  ) {
+   119→   119→    this.projectRoot = projectRoot;
+   120→   120→    this.srcDir = join(projectRoot, 'src');
+   121→   121→    this.llmRouter = llmRouter;
+   122→   122→    this.config = { ...DEFAULT_CONFIG, ...config };
+   123→   123→    this.backupDir = join(projectRoot, '.devmind', 'mutations');
+   124→   124→    mkdirSync(this.backupDir, { recursive: true });
+   125→   125→  }
+   126→   126→
+   127→   127→  // ==============================================================
+   128→   128→  // analyze() — Scan source files for issues & improvement areas
+   129→   129→  // ==============================================================
+   130→   130→
+   131→   131→  analyze(): MutationTarget[] {
+   132→   132→    const sourceFiles = this.getSourceFiles();
+   133→   133→    const targets: MutationTarget[] = [];
+   134→   134→
+   135→   135→    for (const filePath of sourceFiles) {
+   136→   136→      try {
+   137→   137→        const code = readFileSync(filePath, 'utf-8');
+   138→   138→        const lines = code.split('\n');
+   139→   139→        const lineCount = lines.length;
+   140→   140→        const relPath = relative(this.projectRoot, filePath).replace(/\\/g, '/');
+   141→   141→
+   142→   142→        if (lineCount > this.config.maxLinesPerFile) continue;
+   143→   143→
+   144→   144→        const issues: string[] = [];
+   145→   145→        const improvementAreas: string[] = [];
+   146→   146→
+   147→   147→        // --- Detect TODOs, FIXMEs, HACKs ---
+   148→   148→        for (let i = 0; i < lines.length; i++) {
+   149→   149→          const line = lines[i];
+   150→   150→          if (/\bTODO\b/i.test(line)) {
+   151→   151→            issues.push(`TODO at line ${i + 1}: ${line.trim()}`);
+   152→   152→          }
+   153→   153→          if (/\bFIXME\b/i.test(line)) {
+   154→   154→            issues.push(`FIXME at line ${i + 1}: ${line.trim()}`);
+   155→   155→          }
+   156→   156→          if (/\bHACK\b/i.test(line)) {
+   157→   157→            issues.push(`HACK at line ${i + 1}: ${line.trim()}`);
+   158→   158→          }
+   159→   159→        }
+   160→   160→
+   161→   161→        // --- Empty catch blocks (catch without console.error) ---
+   162→   162→        for (let i = 0; i < lines.length; i++) {
+   163→   163→          const line = lines[i];
+   164→   164→          if (/catch\s*\(/.test(line) || /^catch\b/.test(line.trim())) {
+   165→   165→            // Look ahead for empty block
+   166→   166→            let j = i + 1;
+   167→   167→            while (j < lines.length && lines[j].trim() === '') j++;
+   168→   168→            if (j < lines.length) {
+   169→   169→              const nextLine = lines[j].trim();
+   170→   170→              if (nextLine === '}' || nextLine === '};') {
+   171→   171→                issues.push(`Empty catch block at line ${i + 1}`);
+   172→   172→              } else if (
+   173→   173→                nextLine.startsWith('//') &&
+   174→   174→                j + 1 < lines.length &&
+   175→   175→                (lines[j + 1].trim() === '}' || lines[j + 1].trim() === '};')
+   176→   176→              ) {
+   177→   177→                issues.push(`Empty catch block (comment-only) at line ${i + 1}`);
+   178→   178→              }
+   179→   179→            }
+   180→   180→          }
+   181→   181→        }
+   182→   182→
+   183→   183→        // --- Duplicate function names ---
+   184→   184→        const funcNames: string[] = [];
+   185→   185→        const funcRegex =
+   186→   186→          /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\()/g;
+   187→   187→        let match: RegExpExecArray | null;
+   188→   188→        while ((match = funcRegex.exec(code)) !== null) {
+   189→   189→          const name = match[1] || match[2];
+   190→   190→          if (name) {
+   191→   191→            if (funcNames.includes(name)) {
+   192→   192→              issues.push(`Duplicate function name: ${name}`);
+   193→   193→            }
+   194→   194→            funcNames.push(name);
+   195→   195→          }
+   196→   196→        }
+   197→   197→
+   198→   198→        // --- Redundant dependencies (fetch + axios) ---
+   199→   199→        const hasFetch = /from\s+['"]node-fetch['"]|require\s*\(\s*['"]node-fetch['"]\)/.test(code);
+   200→   200→        const hasAxios = /from\s+['"]axios['"]|require\s*\(\s*['"]axios['"]\)/.test(code);
+   201→   201→        if (hasFetch && hasAxios) {
+   202→   202→          issues.push('Redundant dependencies: both fetch and axios imported');
+   203→   203→        }
+   204→   204→
+   205→   205→        // --- Unhandled promises (.then without .catch) ---
+   206→   206→        const thenWithoutCatch = code.match(/\.then\s*\(/g);
+   207→   207→        const catchCount = code.match(/\.catch\s*\(/g);
+   208→   208→        if (
+   209→   209→          thenWithoutCatch &&
+   210→   210→          thenWithoutCatch.length > (catchCount ? catchCount.length : 0)
+   211→   211→        ) {
+   212→   212→          issues.push(
+   213→   213→            `Unhandled promises: ${thenWithoutCatch.length} .then() but only ${catchCount ? catchCount.length : 0} .catch()`,
+   214→   214→          );
+   215→   215→        }
+   216→   216→
+   217→   217→        // --- Too many console.logs ---
+   218→   218→        const logCount = (code.match(/console\.log\s*\(/g) || []).length;
+   219→   219→        if (logCount > 10) {
+   220→   220→          issues.push(`Excessive console.log calls: ${logCount} (threshold: 10)`);
+   221→   221→        }
+   222→   222→
+   223→   223→        // --- Improvement areas ---
+   224→   224→
+   225→   225→        // Pollinations → Canvas
+   226→   226→        if (/pollinations/i.test(code)) {
+   227→   227→          improvementAreas.push('Consider migrating Pollinations to Canvas for local image generation');
+   228→   228→        }
+   229→   229→
+   230→   230→        // External APIs → local
+   231→   231→        if (/fetch\s*\(\s*['"]https?:\/\//.test(code)) {
+   232→   232→          improvementAreas.push('Consider replacing external API calls with local implementations where possible');
+   233→   233→        }
+   234→   234→
+   235→   235→        // readFileSync → async
+   236→   236→        if (/readFileSync\s*\(/.test(code)) {
+   237→   237→          improvementAreas.push('Consider using async readFile instead of readFileSync');
+   238→   238→        }
+   239→   239→
+   240→   240→        // Sequential await → Promise.all
+   241→   241→        const awaitCount = (code.match(/await\s+/g) || []).length;
+   242→   242→        if (awaitCount > 3) {
+   243→   243→          improvementAreas.push('Consider using Promise.all for independent sequential awaits');
+   244→   244→        }
+   245→   245→
+   246→   246→        // eval() risk
+   247→   247→        if (/\beval\s*\(/.test(code)) {
+   248→   248→          improvementAreas.push('SECURITY: eval() usage detected — consider safer alternatives');
+   249→   249→        }
+   250→   250→
+   251→   251→        // innerHTML without sanitization
+   252→   252→        if (/innerHTML\s*=/.test(code) && !/sanitize|escape|DOMPurify/i.test(code)) {
+   253→   253→          improvementAreas.push('SECURITY: innerHTML without sanitization detected');
+   254→   254→        }
+   255→   255→
+   256→   256→        // spawnSync blocking
+   257→   257→        if (/spawnSync\s*\(/.test(code) || /execSync\s*\(/.test(code)) {
+   258→   258→          improvementAreas.push('Consider using async spawn/exec instead of sync variants');
+   259→   259→        }
+   260→   260→
+   261→   261→        // Image provider without Canvas
+   262→   262→        if (/imageProvider|image-provider/i.test(code) && !/canvas/i.test(code)) {
+   263→   263→          improvementAreas.push('Consider adding Canvas as a local image provider fallback');
+   264→   264→        }
+   265→   265→
+   266→   266→        if (issues.length > 0 || improvementAreas.length > 0) {
+   267→   267→          targets.push({
+   268→   268→            file: filePath.replace(/\\/g, '/'),
+   269→   269→            relativePath: relPath,
+   270→   270→            currentCode: code,
+   271→   271→            lineCount,
+   272→   272→            issues,
+   273→   273→            improvementAreas,
+   274→   274→          });
+   275→   275→        }
+   276→   276→      } catch {
+   277→   277→        // Skip unreadable files
+   278→   278→      }
+   279→   279→    }
+   280→   280→
+   281→   281→    // Sort by issue count (most issues first)
+   282→   282→    targets.sort((a, b) => b.issues.length - a.issues.length);
+   283→   283→
+   284→   284→    return targets;
+   285→   285→  }
+   286→   286→
+   287→   287→  // ==============================================================
+   288→   288→  // propose() — Generate mutation proposals via LLM
+   289→   289→  // ==============================================================
+   290→   290→
+   291→   291→  async propose(targets: MutationTarget[]): Promise<MutationPlan> {
+   292→   292→    const planId = `mutation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+   293→   293→    const topTargets = targets.slice(0, this.config.maxFilesPerPlan);
+   294→   294→    const proposals: MutationProposal[] = [];
+   295→   295→
+   296→   296→    for (const target of topTargets) {
+   297→   297→      try {
+   298→   298→        const proposal = await this.generateProposal(target);
+   299→   299→        if (proposal) {
+   300→   300→          proposals.push(proposal);
+   301→   301→        }
+   302→   302→      } catch (err) {
+   303→   303→        console.warn(
+   304→   304→          `[SelfMutation] Failed to generate proposal for ${target.relativePath}: ${err instanceof Error ? err.message : String(err)}`,
+   305→   305→        );
+   306→   306→      }
+   307→   307→    }
+   308→   308→
+   309→   309→    const plan: MutationPlan = {
+   310→   310→      id: planId,
+   311→   311→      timestamp: Date.now(),
+   312→   312→      targets: topTargets,
+   313→   313→      proposal: proposals,
+   314→   314→      status: 'proposed',
+   315→   315→      backupBranch: `devmind/${planId}`,
+   316→   316→      summary: `Proposed ${proposals.length} improvement(s) across ${topTargets.length} file(s)`,
+   317→   317→    };
+   318→   318→
+   319→   319→    this.plans.set(planId, plan);
+   320→   320→
+   321→   321→    // Auto-approve if configured
+   322→   322→    if (this.config.autoApply) {
+   323→   323→      plan.status = 'approved';
+   324→   324→      if (!this.config.dryRun) {
+   325→   325→        return this.apply(planId);
+   326→   326→      }
+   327→   327→    }
+   328→   328→
+   329→   329→    return plan;
+   330→   330→  }
+   331→   331→
+   332→   332→  // ==============================================================
+   333→   333→  // approve() — Mark a plan as approved
+   334→   334→  // ==============================================================
+   335→   335→
+   336→   336→  approve(planId: string): MutationPlan {
+   337→   337→    const plan = this.plans.get(planId);
+   338→   338→    if (!plan) {
+   339→   339→      throw new Error(`Mutation plan "${planId}" not found`);
+   340→   340→    }
+   341→   341→    if (plan.status !== 'proposed') {
+   342→   342→      throw new Error(`Cannot approve plan in "${plan.status}" status`);
+   343→   343→    }
+   344→   344→    plan.status = 'approved';
+   345→   345→    return plan;
+   346→   346→  }
+   347→   347→
+   348→   348→  // ==============================================================
+   349→   349→  // apply() — Apply a mutation plan with backup & verification
+   350→   350→  // ==============================================================
+   351→   351→
+   352→   352→  async apply(planId: string): Promise<MutationResult> {
+   353→   353→    const plan = this.plans.get(planId);
+   354→   354→    if (!plan) {
+   355→   355→      throw new Error(`Mutation plan "${planId}" not found`);
+   356→   356→    }
+   357→   357→    if (plan.status !== 'approved' && plan.status !== 'proposed') {
+   358→   358→      throw new Error(`Cannot apply plan in "${plan.status}" status`);
+   359→   359→    }
+   360→   360→
+   361→   361→    const errors: string[] = [];
+   362→   362→
+   363→   363→    // 1. Create backup
+   364→   364→    this.createBackup(plan);
+   365→   365→
+   366→   366→    // 2. Call onBeforeApply callback
+   367→   367→    if (this.config.onBeforeApply) {
+   368→   368→      try {
+   369→   369→        const allowed = await this.config.onBeforeApply(plan);
+   370→   370→        if (!allowed) {
+   371→   371→          plan.status = 'failed';
+   372→   372→          return {
+   373→   373→            success: false,
+   374→   374→            plan,
+   375→   375→            errors: ['Mutation blocked by onBeforeApply callback'],
+   376→   376→            compilationOk: false,
+   377→   377→            testsPass: false,
+   378→   378→          };
+   379→   379→        }
+   380→   380→      } catch (err) {
+   381→   381→        const msg = err instanceof Error ? err.message : String(err);
+   382→   382→        errors.push(`onBeforeApply callback error: ${msg}`);
+   383→   383→        plan.status = 'failed';
+   384→   384→        return { success: false, plan, errors, compilationOk: false, testsPass: false };
+   385→   385→      }
+   386→   386→    }
+   387→   387→
+   388→   388→    // 3. Apply each proposal
+   389→   389→    for (const proposal of plan.proposal) {
+   390→   390→      try {
+   391→   391→        const normalizedFile = proposal.file.replace(/\\/g, '/');
+   392→   392→        const fullPath = resolve(this.projectRoot, normalizedFile);
+   393→   393→
+   394→   394→        if (!existsSync(fullPath)) {
+   395→   395→          errors.push(`File not found: ${normalizedFile}`);
+   396→   396→          continue;
+   397→   397→        }
+   398→   398→
+   399→   399→        const currentContent = readFileSync(fullPath, 'utf-8');
+   400→   400→
+   401→   401→        // Try exact match first
+   402→   402→        let newContent = currentContent.replace(proposal.oldCode.trim(), proposal.newCode);
+   403→   403→
+   404→   404→        // Tolerant second attempt: try with whitespace-flexible matching
+   405→   405→        if (newContent === currentContent) {
+   406→   406→          const oldTrimmed = proposal.oldCode.trim();
+   407→   407→          const oldLines = oldTrimmed.split('\n').map((l) => l.trim());
+   408→   408→          // Build a regex that allows flexible whitespace
+   409→   409→          const flexiblePattern = oldLines.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*\\n\\s*');
+   410→   410→          try {
+   411→   411→            const regex = new RegExp(flexiblePattern, 'm');
+   412→   412→            newContent = currentContent.replace(regex, proposal.newCode);
+   413→   413→          } catch {
+   414→   414→            // Regex construction failed — skip
+   415→   415→          }
+   416→   416→        }
+   417→   417→
+   418→   418→        if (newContent === currentContent) {
+   419→   419→          errors.push(
+   420→   420→            `oldCode not found in ${normalizedFile} — skipping (oldCode: "${proposal.oldCode.slice(0, 60)}...")`,
+   421→   421→          );
+   422→   422→          continue;
+   423→   423→        }
+   424→   424→
+   425→   425→        if (!this.config.dryRun) {
+   426→   426→          writeFileSync(fullPath, newContent, 'utf-8');
+   427→   427→        }
+   428→   428→      } catch (err) {
+   429→   429→        const msg = err instanceof Error ? err.message : String(err);
+   430→   430→        errors.push(`Error applying proposal to ${proposal.file}: ${msg}`);
+   431→   431→      }
+   432→   432→    }
+   433→   433→
+   434→   434→    // 4. Verify compilation
+   435→   435→    let compilationOk = false;
+   436→   436→    if (!this.config.dryRun) {
+   437→   437→      compilationOk = this.verifyCompilation();
+   438→   438→      if (!compilationOk) {
+   439→   439→        // Automatic rollback on compilation failure
+   440→   440→        console.warn('[SelfMutation] Compilation failed — rolling back automatically');
+   441→   441→        this.rollback(planId);
+   442→   442→        plan.status = 'failed';
+   443→   443→        return {
+   444→   444→          success: false,
+   445→   445→          plan,
+   446→   446→          errors: [...errors, 'TypeScript compilation failed after applying mutations — rolled back'],
+   447→   447→          compilationOk: false,
+   448→   448→          testsPass: false,
+   449→   449→        };
+   450→   450→      }
+   451→   451→    } else {
+   452→   452→      compilationOk = true; // Assume ok in dry-run
+   453→   453→    }
+   454→   454→
+   455→   455→    plan.status = 'applied';
+   456→   456→    return {
+   457→   457→      success: errors.length === 0,
+   458→   458→      plan,
+   459→   459→      errors,
+   460→   460→      compilationOk,
+   461→   461→      testsPass: true, // Test execution is not part of this engine
+   462→   462→    };
+   463→   463→  }
+   464→   464→
+   465→   465→  // ==============================================================
+   466→   466→  // rollback() — Restore files from backup
+   467→   467→  // ==============================================================
+   468→   468→
+   469→   469→  rollback(planId: string): MutationPlan {
+   470→   470→    const plan = this.plans.get(planId);
+   471→   471→    if (!plan) {
+   472→   472→      throw new Error(`Mutation plan "${planId}" not found`);
+   473→   473→    }
+   474→   474→
+   475→   475→    const planBackupDir = join(this.backupDir, planId);
+   476→   476→
+   477→   477→    if (!existsSync(planBackupDir)) {
+   478→   478→      throw new Error(`No backup found for plan "${planId}"`);
+   479→   479→    }
+   480→   480→
+   481→   481→    // Restore each backed-up file
+   482→   482→    const backupFiles = readdirSync(planBackupDir);
+   483→   483→    for (const backupFileName of backupFiles) {
+   484→   484→      const backupFilePath = join(planBackupDir, backupFileName);
+   485→   485→
+   486→   486→      // Reverse the normalization: underscores → path separators
+   487→   487→      // The backup filename was created by replacing /[\\/]/g with '_'
+   488→   488→      // We need to recover the original relative path
+   489→   489→      const restoredRelPath = backupFileName.replace(/_/g, '/');
+   490→   490→      const targetPath = resolve(this.projectRoot, restoredRelPath);
+   491→   491→
+   492→   492→      if (existsSync(targetPath)) {
+   493→   493→        copyFileSync(backupFilePath, targetPath);
+   494→   494→      }
+   495→   495→    }
+   496→   496→
+   497→   497→    plan.status = 'rolled_back';
+   498→   498→    return plan;
+   499→   499→  }
+   500→   500→
+   501→   501→  // ==============================================================
+   502→   502→  // getHistory() — Return all plans
+   503→   503→  // ==============================================================
+   504→   504→
+   505→   505→  getHistory(): MutationPlan[] {
+   506→   506→    return Array.from(this.plans.values()).sort(
+   507→   507→      (a, b) => b.timestamp - a.timestamp,
+   508→   508→    );
+   509→   509→  }
+   510→   510→
+   511→   511→  // ==============================================================
+   512→   512→  // getPlan() — Return a specific plan
+   513→   513→  // ==============================================================
+   514→   514→
+   515→   515→  getPlan(planId: string): MutationPlan | undefined {
+   516→   516→    return this.plans.get(planId);
+   517→   517→  }
+   518→   518→
+   519→   519→  // ==============================================================
+   520→   520→  // Private: Generate a single proposal via LLM
+   521→   521→  // ==============================================================
+   522→   522→
+   523→   523→  private async generateProposal(
+   524→   524→    target: MutationTarget,
+   525→   525→  ): Promise<MutationProposal | null> {
+   526→   526→    const systemPrompt = `You are a conservative code-improvement assistant for the DevMind Agent project.
+   527→   527→Your job is to propose exactly ONE small, safe improvement to the provided source file.
+   528→   528→
+   529→   529→RULES (MUST follow ALL of these):
+   530→   530→1. Only propose changes that will NOT break TypeScript compilation.
+   531→   531→2. Do NOT propose sync→async changes (they break compilation).
+   532→   532→3. Do NOT add new imports unless absolutely necessary.
+   533→   533→4. PREFERS: adding console.error to empty catch blocks, fixing typos, adding missing error handling.
+   534→   534→5. The oldCode must be an EXACT match of 3-10 lines from the source file.
+   535→   535→6. Keep changes SMALL — newCode should be 3-10 lines max.
+   536→   536→7. Output pure JSON only — no markdown, no explanation outside JSON.
+   537→   537→8. If you cannot find a safe improvement, respond with: {"skip": true}
+   538→   538→
+   539→   539→JSON format:
+   540→   540→{
+   541→   541→  "file": "relative/path/to/file.ts",
+   542→   542→  "description": "Brief description of the change",
+   543→   543→  "reasoning": "Why this change is safe and beneficial",
+   544→   544→  "oldCode": "exact code to replace (3-10 lines)",
+   545→   545→  "newCode": "replacement code (3-10 lines)",
+   546→   546→  "riskLevel": "low|medium|high",
+   547→   547→  "category": "performance|feature|bugfix|refactor|security|dependency|reliability"
+   548→   548→}`;
+   549→   549→
+   550→   550→    const contextLines = target.issues
+   551→   551→      .slice(0, 10)
+   552→   552→      .map((i) => `  - ${i}`)
+   553→   553→      .join('\n');
+   554→   554→    const improveLines = target.improvementAreas
+   555→   555→      .slice(0, 5)
+   556→   556→      .map((i) => `  - ${i}`)
+   557→   557→      .join('\n');
+   558→   558→
+   559→   559→    const userPrompt = `File: ${target.relativePath} (${target.lineCount} lines)
+   560→   560→
+   561→   561→Detected issues:
+   562→   562→${contextLines || '  (none)'}
+   563→   563→
+   564→   564→Improvement areas:
+   565→   565→${improveLines || '  (none)'}
+   566→   566→
+   567→   567→Source code:
+   568→   568→\`\`\`typescript
+   569→   569→${target.currentCode}
+   570→   570→\`\`\`
+   571→   571→
+   572→   572→Propose ONE small, safe improvement as JSON.`;
+   573→   573→
+   574→   574→    const messages: LLMMessage[] = [
+   575→   575→      { role: 'system', content: systemPrompt },
+   576→   576→      { role: 'user', content: userPrompt },
+   577→   577→    ];
+   578→   578→
+   579→   579→    const response = await this.llmRouter.callWithFallback(messages, 'code');
+   580→   580→    const text = response.choices[0]?.message?.content?.trim() ?? '';
+   581→   581→
+   582→   582→    if (!text) return null;
+   583→   583→
+   584→   584→    const parsed = this.parseProposalResponse(text, target.relativePath);
+   585→   585→    return parsed;
+   586→   586→  }
+   587→   587→
+   588→   588→  // ==============================================================
+   589→   589→  // Private: Parse LLM response into a MutationProposal
+   590→   590→  // ==============================================================
+   591→   591→
+   592→   592→  private parseProposalResponse(
+   593→   593→    text: string,
+   594→   594→    fallbackFile: string,
+   595→   595→  ): MutationProposal | null {
+   596→   596→    let raw: Record<string, unknown> | null = null;
+   597→   597→
+   598→   598→    // Strategy 1: Direct JSON.parse
+   599→   599→    try {
+   600→   600→      raw = JSON.parse(text);
+   601→   601→    } catch {
+   602→   602→      // Strategy 2: Extract from code blocks (```json...```)
+   603→   603→      const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+   604→   604→      if (codeBlockMatch) {
+   605→   605→        try {
+   606→   606→          raw = JSON.parse(codeBlockMatch[1]);
+   607→   607→        } catch {
+   608→   608→          // Strategy 3: Regex fallback to extract individual fields
+   609→   609→          raw = this.extractFieldsByRegex(text);
+   610→   610→        }
+   611→   611→      } else {
+   612→   612→        // Strategy 3 without code block
+   613→   613→        raw = this.extractFieldsByRegex(text);
+   614→   614→      }
+   615→   615→    }
+   616→   616→
+   617→   617→    if (!raw || raw.skip) return null;
+   618→   618→
+   619→   619→    // Normalize paths to forward slashes
+   620→   620→    const file = typeof raw.file === 'string'
+   621→   621→      ? raw.file.replace(/\\/g, '/')
+   622→   622→      : fallbackFile;
+   623→   623→
+   624→   624→    // Verify oldCode exists in the file (tolerant second attempt)
+   625→   625→    const oldCode = typeof raw.oldCode === 'string' ? raw.oldCode : '';
+   626→   626→    const newCode = typeof raw.newCode === 'string' ? raw.newCode : '';
+   627→   627→
+   628→   628→    if (!oldCode || !newCode) return null;
+   629→   629→
+   630→   630→    // Try to verify oldCode exists in the target file
+   631→   631→    const normalizedFile = file.replace(/\\/g, '/');
+   632→   632→    const fullPath = resolve(this.projectRoot, normalizedFile);
+   633→   633→    if (existsSync(fullPath)) {
+   634→   634→      const fileContent = readFileSync(fullPath, 'utf-8');
+   635→   635→
+   636→   636→      if (!fileContent.includes(oldCode.trim())) {
+   637→   637→        // Tolerant second attempt: trim each line
+   638→   638→        const oldLines = oldCode.trim().split('\n').map((l) => l.trim());
+   639→   639→        const fileLines = fileContent.split('\n');
+   640→   640→
+   641→   641→        let found = false;
+   642→   642→        for (let i = 0; i <= fileLines.length - oldLines.length; i++) {
+   643→   643→          let match = true;
+   644→   644→          for (let j = 0; j < oldLines.length; j++) {
+   645→   645→            if (fileLines[i + j].trim() !== oldLines[j]) {
+   646→   646→              match = false;
+   647→   647→              break;
+   648→   648→            }
+   649→   649→          }
+   650→   650→          if (match) {
+   651→   651→            found = true;
+   652→   652→            break;
+   653→   653→          }
+   654→   654→        }
+   655→   655→
+   656→   656→        if (!found) {
+   657→   657→          console.warn(
+   658→   658→            `[SelfMutation] oldCode not found in ${file} — skipping proposal`,
+   659→   659→          );
+   660→   660→          return null;
+   661→   661→        }
+   662→   662→      }
+   663→   663→    }
+   664→   664→
+   665→   665→    const validRiskLevels = ['low', 'medium', 'high'] as const;
+   666→   666→    const validCategories = [
+   667→   667→      'performance',
+   668→   668→      'feature',
+   669→   669→      'bugfix',
+   670→   670→      'refactor',
+   671→   671→      'security',
+   672→   672→      'dependency',
+   673→   673→      'reliability',
+   674→   674→    ] as const;
+   675→   675→
+   676→   676→    const riskLevel = validRiskLevels.includes(raw.riskLevel as typeof validRiskLevels[number])
+   677→   677→      ? (raw.riskLevel as 'low' | 'medium' | 'high')
+   678→   678→      : 'medium';
+   679→   679→
+   680→   680→    const category = validCategories.includes(raw.category as typeof validCategories[number])
+   681→   681→      ? (raw.category as MutationProposal['category'])
+   682→   682→      : 'bugfix'; // Default to 'bugfix' (safest)
+   683→   683→
+   684→   684→    return {
+   685→   685→      file,
+   686→   686→      description: typeof raw.description === 'string' ? raw.description : 'Code improvement',
+   687→   687→      reasoning: typeof raw.reasoning === 'string' ? raw.reasoning : 'Safety improvement',
+   688→   688→      oldCode,
+   689→   689→      newCode,
+   690→   690→      riskLevel,
+   691→   691→      category,
+   692→   692→    };
+   693→   693→  }
+   694→   694→
+   695→   695→  // ==============================================================
+   696→   696→  // Private: Regex-based field extraction (fallback strategy 3)
+   697→   697→  // ==============================================================
+   698→   698→
+   699→   699→  private extractFieldsByRegex(text: string): Record<string, unknown> | null {
+   700→   700→    const extract = (field: string): string | null => {
+   701→   701→      const patterns = [
+   702→   702→        new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 's'),
+   703→   703→        new RegExp(`'${field}'\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'`, 's'),
+   704→   704→        new RegExp(`"${field}"\\s*:\\s*\`([^\`]*)\``, 's'),
+   705→   705→      ];
+   706→   706→      for (const pattern of patterns) {
+   707→   707→        const m = text.match(pattern);
+   708→   708→        if (m) return m[1];
+   709→   709→      }
+   710→   710→      return null;
+   711→   711→    };
+   712→   712→
+   713→   713→    const file = extract('file');
+   714→   714→    const description = extract('description');
+   715→   715→    const reasoning = extract('reasoning');
+   716→   716→    const oldCode = extract('oldCode');
+   717→   717→    const newCode = extract('newCode');
+   718→   718→    const riskLevel = extract('riskLevel');
+   719→   719→    const category = extract('category');
+   720→   720→
+   721→   721→    if (!oldCode || !newCode) return null;
+   722→   722→
+   723→   723→    return {
+   724→   724→      file: file ?? '',
+   725→   725→      description: description ?? '',
+   726→   726→      reasoning: reasoning ?? '',
+   727→   727→      oldCode,
+   728→   728→      newCode,
+   729→   729→      riskLevel: riskLevel ?? 'medium',
+   730→   730→      category: category ?? 'bugfix',
+   731→   731→    };
+   732→   732→  }
+   733→   733→
+   734→   734→  // ==============================================================
+   735→   735→  // Private: getSourceFiles() — Walk src/ directory recursively
+   736→   736→  // ==============================================================
+   737→   737→
+   738→   738→  private getSourceFiles(): string[] {
+   739→   739→    const files: string[] = [];
+   740→   740→    const excludeDirs = new Set(this.config.excludeDirs);
+   741→   741→
+   742→   742→    const walk = (dir: string): void => {
+   743→   743→      if (!existsSync(dir)) return;
+   744→   744→
+   745→   745→      let entries;
+   746→   746→      try {
+   747→   747→        entries = readdirSync(dir);
+   748→   748→      } catch {
+   749→   749→        return;
+   750→   750→      }
+   751→   751→
+   752→   752→      for (const entry of entries) {
+   753→   753→        const fullPath = join(dir, entry);
+   754→   754→        let stat;
+   755→   755→        try {
+   756→   756→          stat = statSync(fullPath);
+   757→   757→        } catch {
+   758→   758→          continue;
+   759→   759→        }
+   760→   760→
+   761→   761→        if (stat.isDirectory()) {
+   762→   762→          if (!excludeDirs.has(entry)) {
+   763→   763→            walk(fullPath);
+   764→   764→          }
+   765→   765→        } else if (stat.isFile()) {
+   766→   766→          if (/\.(ts|js)$/.test(entry)) {
+   767→   767→            files.push(fullPath);
+   768→   768→          }
+   769→   769→        }
+   770→   770→      }
+   771→   771→    };
+   772→   772→
+   773→   773→    walk(this.srcDir);
+   774→   774→    return files;
+   775→   775→  }
+   776→   776→
+   777→   777→  // ==============================================================
+   778→   778→  // Private: createBackup() — Copy files to .devmind/mutations/{planId}/
+   779→   779→  // ==============================================================
+   780→   780→
+   781→   781→  private createBackup(plan: MutationPlan): void {
+   782→   782→    const planBackupDir = join(this.backupDir, plan.id);
+   783→   783→    mkdirSync(planBackupDir, { recursive: true });
+   784→   784→
+   785→   785→    const backedUpFiles = new Set<string>();
+   786→   786→
+   787→   787→    for (const proposal of plan.proposal) {
+   788→   788→      // Normalize: replace both forward and back slashes with underscore
+   789→   789→      const normalizedFile = proposal.file.replace(/[\\/]/g, '_');
+   790→   790→      const normalizedSource = proposal.file.replace(/\\/g, '/');
+   791→   791→      const sourcePath = resolve(this.projectRoot, normalizedSource);
+   792→   792→
+   793→   793→      if (backedUpFiles.has(normalizedFile)) continue;
+   794→   794→      backedUpFiles.add(normalizedFile);
+   795→   795→
+   796→   796→      if (existsSync(sourcePath)) {
+   797→   797→        const backupPath = join(planBackupDir, normalizedFile);
+   798→   798→        copyFileSync(sourcePath, backupPath);
+   799→   799→      }
+   800→   800→    }
+   801→   801→  }
+   802→   802→
+   803→   803→  // ==============================================================
+   804→   804→  // Private: verifyCompilation() — Run tsc --noEmit with timeout
+   805→   805→  // ==============================================================
+   806→   806→
+   807→   807→  private verifyCompilation(): boolean {
+   808→   808→    try {
+   809→   809→      execSync('npx tsc --noEmit', {
+   810→   810→        cwd: this.projectRoot,
+   811→   811→        timeout: 30_000,
+   812→   812→        stdio: 'pipe',
+   813→   813→      });
+   814→   814→      return true;
+   815→   815→    } catch {
+   816→   816→      return false;
+   817→   817→    }
+   818→   818→  }
+   819→   819→}
+   820→   820→
