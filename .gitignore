@@ -1,2 +1,10 @@
 skills/
 node_modules/
+dist/
+.env
+workspace/
+generated_images/
+generated_videos/
+.devmind/
+tests/coverage/
+*.log
