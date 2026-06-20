@@ -19,6 +19,16 @@ const ConfigSchema = z.object({
   // El usuario puede configurarla desde la UI del dashboard.
   GLM_API_KEY: z.string().default(''),
 
+  // --- Cloudflare Workers AI (Gratis - Llama 3.3 70B) ---
+  CLOUDFLARE_API_KEY: z.string().optional(),
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+
+  // --- Otros proveedores LLM gratuitos ---
+  GROQ_API_KEY: z.string().optional(),
+  GOOGLE_AI_API_KEY: z.string().optional(),
+  MISTRAL_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+
   // --- Autenticación separada ---
   // API_AUTH_KEY se usa para autenticar Dashboard y REST API.
   // Si no se configura, se usa GLM_API_KEY como fallback (no recomendado para producción).
