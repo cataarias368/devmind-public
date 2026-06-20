@@ -28,6 +28,7 @@ const ConfigSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  DEEPSEEK_API_KEY: z.string().optional(),
 
   // --- Autenticación separada ---
   // API_AUTH_KEY se usa para autenticar Dashboard y REST API.

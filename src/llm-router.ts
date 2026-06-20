@@ -162,6 +162,36 @@ export class LLMRouter {
         limits: { requestsPerDay: 100, tokensPerMinute: 10000 },
       });
     }
+
+    // --- DeepSeek (deepseek-v4-pro, excelente para codigo y razonamiento) ---
+    if (process.env.DEEPSEEK_API_KEY) {
+      this.providers.set('deepseek', {
+        id: 'deepseek', name: 'DeepSeek', type: process.env.PREFERRED_MODEL?.includes('pro') ? 'paid' : 'free',
+        models: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-pro'],
+        isAvailable: () => !!process.env.DEEPSEEK_API_KEY,
+        call: async (messages, _tools) => {
+          const model = process.env.PREFERRED_MODEL?.includes('deepseek') ? process.env.PREFERRED_MODEL : 'deepseek-chat';
+          const response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              messages: messages.map(m => ({ role: m.role, content: m.content })),
+              temperature: 0.7,
+              max_tokens: 8192,
+            }),
+          });
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`DeepSeek error ${response.status}: ${errText}`);
+          }
+          const data = await response.json() as LLMResponse;
+          return data;
+        },
+        costPer1kTokens: 0.27, speed: 'medium', quality: 'high',
+        limits: { requestsPerDay: 500, tokensPerMinute: 32000 },
+      });
+    }
   }
 
   async getBestProvider(task: string): Promise<LLMProviderInfo | null> {
@@ -169,12 +199,16 @@ export class LLMRouter {
     const available = Array.from(this.providers.values()).filter(p => p.isAvailable());
     if (available.length === 0) return null;
     if (lower.includes('codigo') || lower.includes('code') || lower.includes('programar') || lower.includes('refactor') || lower.includes('implementar') || lower.includes('api')) {
+      const deepseek = available.find(p => p.id === 'deepseek');
+      if (deepseek) return deepseek;
       const mistral = available.find(p => p.id === 'mistral');
       if (mistral) return mistral;
       const groq = available.find(p => p.id === 'groq');
       if (groq) return groq;
     }
     if (lower.includes('razonar') || lower.includes('analizar') || lower.includes('arquitectura') || lower.includes('disenar') || lower.includes('planificar') || lower.includes('estrategia')) {
+      const deepseek = available.find(p => p.id === 'deepseek');
+      if (deepseek) return deepseek;
       const google = available.find(p => p.id === 'google-ai-studio');
       if (google) return google;
     }
