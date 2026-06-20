@@ -1,7 +1,7 @@
 // ============================================================
 // src/core/self-mutation.ts - Motor de Auto-Mutación de Código
 // La plataforma se analiza, propone mejoras, y se reescribe
-// Funciona con CUALQUIER LLM disponible (Groq, OpenRouter, etc.)
+// Funciona con CUALQUIER LLM disponible (DeepSeek, Cloudflare, Groq, etc.)
 // ============================================================
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from 'fs';
@@ -15,8 +15,9 @@ export type MutationApprovalCallback = (plan: MutationPlan) => Promise<boolean>;
 
 // --- Configuración del motor ---
 export interface SelfMutationConfig {
-  maxFilesPerPlan?: number;       // Máximo archivos a analizar por plan (default: 5)
-  maxLinesPerFile?: number;       // Máximo líneas a enviar al LLM (default: 200)
+  maxFilesPerPlan?: number;       // Máximo archivos a analizar por plan (default: 10)
+  maxLinesPerFile?: number;       // Máximo líneas a enviar al LLM (default: 80)
+  maxProposalsPerFile?: number;   // Máximo propuestas por archivo (default: 3)
   autoApply?: boolean;            // Si true, aplica sin pedir confirmación (default: false)
   dryRun?: boolean;               // Si true, no escribe archivos (default: false)
   excludeDirs?: string[];         // Directorios a excluir del análisis
@@ -78,8 +79,9 @@ export class SelfMutationEngine {
     this.llmRouter = llmRouter;
     this.backupDir = resolve(projectRoot, '.devmind', 'mutations');
     this.config = {
-      maxFilesPerPlan: 5,
-      maxLinesPerFile: 200,
+      maxFilesPerPlan: 10,
+      maxLinesPerFile: 80,
+      maxProposalsPerFile: 3,
       autoApply: false,
       dryRun: false,
       excludeDirs: [],
@@ -125,6 +127,7 @@ export class SelfMutationEngine {
     // Ordenar por más issues primero
     targets.sort((a, b) => (b.issues.length + b.improvementAreas.length) - (a.issues.length + a.improvementAreas.length));
 
+    console.log(`[SelfMutation] Analisis: ${targets.length} archivos con ${targets.reduce((s, t) => s + t.issues.length, 0)} issues y ${targets.reduce((s, t) => s + t.improvementAreas.length, 0)} mejoras posibles`);
     return targets;
   }
 
@@ -137,26 +140,37 @@ export class SelfMutationEngine {
     const timestamp = new Date().toISOString();
     const backupBranch = `devmind-mutation-${Date.now()}`;
 
-    // Construir prompt con el código actual y los issues encontrados
     const proposals: MutationProposal[] = [];
 
-    // Procesar máximo N archivos por plan para no saturar
-    const topTargets = targets.slice(0, this.config.maxFilesPerPlan || 5);
+    // Procesar máximo N archivos por plan
+    const maxFiles = this.config.maxFilesPerPlan || 10;
+    const topTargets = targets.slice(0, maxFiles);
 
-    for (const target of topTargets) {
+    console.log(`[SelfMutation] Generando propuestas para ${topTargets.length} archivos...`);
+
+    for (let i = 0; i < topTargets.length; i++) {
+      const target = topTargets[i];
+      console.log(`[SelfMutation] [${i + 1}/${topTargets.length}] Analizando ${target.relativePath} (${target.issues.length} issues, ${target.improvementAreas.length} mejoras)...`);
+      
       try {
         const proposal = await this.generateProposal(target);
         if (proposal) {
           proposals.push(proposal);
+          console.log(`[SelfMutation] ✅ Propuesta generada: ${proposal.description} (${proposal.category}) en ${target.relativePath}`);
+        } else {
+          console.log(`[SelfMutation] ⏭️ Sin propuesta segura para ${target.relativePath}`);
         }
       } catch (err) {
-        console.warn(`[SelfMutation] Error generando propuesta para ${target.relativePath}: ${err instanceof Error ? err.message : String(err)}`);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[SelfMutation] ❌ Error generando propuesta para ${target.relativePath}: ${errMsg}`);
       }
     }
 
     const summary = proposals.length > 0
       ? `${proposals.length} mejoras propuestas: ${proposals.map(p => p.category).join(', ')}`
       : 'No se generaron propuestas';
+
+    console.log(`[SelfMutation] Resultado: ${summary}`);
 
     const plan: MutationPlan = {
       id,
@@ -170,6 +184,81 @@ export class SelfMutationEngine {
 
     this.history.push(plan);
     return plan;
+  }
+
+  // ============================================================
+  // PASO 2b: PROPONER EN BATCH — Una sola llamada LLM para todos
+  // ============================================================
+
+  async proposeBatch(targets: MutationTarget[]): Promise<MutationPlan> {
+    const id = `mutation-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+    const maxFiles = this.config.maxFilesPerPlan || 10;
+    const topTargets = targets.slice(0, maxFiles);
+
+    console.log(`[SelfMutation] Generando propuestas en batch para ${topTargets.length} archivos...`);
+
+    // Construir un resumen compacto de todos los archivos
+    const fileSummaries = topTargets.map((t, i) => {
+      const path = t.relativePath.replace(/\\/g, '/');
+      const issues = t.issues.slice(0, 3).join('; ');
+      const improvements = t.improvementAreas.slice(0, 3).join('; ');
+      return `${i + 1}. ${path}: issues=[${issues}], mejoras=[${improvements}]`;
+    }).join('\n');
+
+    const systemPrompt = `You are DevMind Self-Mutation. Analyze these files and propose SAFE improvements.
+
+Files to improve:
+${fileSummaries}
+
+Respond with a JSON ARRAY of proposals. Each proposal:
+{"file":"src/path.ts","description":"Short description","reasoning":"Why","oldCode":"exact 3-10 line code to replace","newCode":"improved code","riskLevel":"low","category":"bugfix"}
+
+STRICT RULES:
+- ONLY propose changes that will NOT break TypeScript compilation
+- Do NOT change sync to async, readFileSync to readFile, or require to import
+- Do NOT add new imports, change function signatures, or remove functionality
+- PREFER: adding console.error to empty catches, fixing typos, adding missing error handling
+- oldCode must be EXACT code from the file (3-10 lines, character-perfect)
+- Keep changes SMALL and CONSERVATIVE
+- Output ONLY the JSON array, nothing else
+- If no safe improvement for a file, skip it
+- Maximum 3 proposals total`;
+
+    try {
+      const messages: LLMMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: 'Generate safe improvement proposals for the listed files. Output only JSON array.' },
+      ];
+
+      const response = await this.llmRouter.callWithFallback(messages, 'self-mutation batch');
+      const content = response.choices[0]?.message?.content || '';
+
+      const proposals = this.parseBatchResponse(content, topTargets);
+
+      const summary = proposals.length > 0
+        ? `${proposals.length} mejoras propuestas: ${proposals.map(p => p.category).join(', ')}`
+        : 'No se generaron propuestas';
+
+      console.log(`[SelfMutation] Batch: ${summary}`);
+
+      const plan: MutationPlan = {
+        id,
+        timestamp,
+        targets: topTargets,
+        proposal: proposals,
+        status: 'proposed',
+        backupBranch: `devmind-mutation-${Date.now()}`,
+        summary,
+      };
+
+      this.history.push(plan);
+      return plan;
+    } catch (err) {
+      console.error(`[SelfMutation] Batch proposal failed: ${err instanceof Error ? err.message : String(err)}`);
+      // Fallback: try individual proposals
+      return this.propose(targets);
+    }
   }
 
   // ============================================================
@@ -198,10 +287,10 @@ export class SelfMutationEngine {
     const errors: string[] = [];
 
     try {
-      // 1. Crear backup de los archivos que se van a modificar
+      // 1. Crear backup
       this.createBackup(plan);
 
-      // 2. Notificar al usuario ANTES de aplicar (si hay callback)
+      // 2. Notificar al usuario ANTES de aplicar
       if (this.config.onBeforeApply) {
         const approved = await this.config.onBeforeApply(plan);
         if (!approved) {
@@ -211,10 +300,9 @@ export class SelfMutationEngine {
         }
       }
 
-      // 3. Aplicar cada propuesta (reemplazo de oldCode → newCode)
+      // 3. Aplicar cada propuesta
       for (const proposal of plan.proposal) {
         try {
-          // Normalizar backslashes a forward slashes para resolve()
           const filePath = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
           if (!existsSync(filePath)) {
             errors.push(`Archivo no encontrado: ${proposal.file}`);
@@ -226,20 +314,30 @@ export class SelfMutationEngine {
             continue;
           }
 
-          // Leer el archivo actual y hacer reemplazo exacto de oldCode → newCode
           const currentContent = readFileSync(filePath, 'utf-8');
           const oldCode = proposal.oldCode.trim();
 
-          if (!currentContent.includes(oldCode)) {
-            errors.push(`oldCode no encontrado en ${proposal.file} — el archivo cambió desde la propuesta. Saltando.`);
+          // Intento 1: match exacto
+          let newContent = currentContent.replace(oldCode, proposal.newCode);
+
+          // Intento 2: match flexible (ignorar whitespace)
+          if (newContent === currentContent) {
+            const oldLines = oldCode.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const flexiblePattern = oldLines.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*\\n\\s*');
+            try {
+              const regex = new RegExp(flexiblePattern, 'm');
+              newContent = currentContent.replace(regex, proposal.newCode);
+            } catch { /* regex construction failed */ }
+          }
+
+          if (newContent === currentContent) {
+            errors.push(`oldCode no encontrado en ${proposal.file} — saltando`);
             console.warn(`[SelfMutation] oldCode no encontrado en ${proposal.file} — saltando`);
             continue;
           }
 
-          // Reemplazar oldCode con newCode (preservar la indentación del contexto)
-          const newContent = currentContent.replace(oldCode, proposal.newCode);
           writeFileSync(filePath, newContent, 'utf-8');
-          console.log(`[SelfMutation] Aplicado: ${proposal.description} en ${proposal.file}`);
+          console.log(`[SelfMutation] ✅ Aplicado: ${proposal.description} en ${proposal.file}`);
         } catch (err) {
           errors.push(`Error aplicando cambio en ${proposal.file}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -250,17 +348,17 @@ export class SelfMutationEngine {
 
       // 5. Si hay errores de compilación, rollback automático
       if (!compilationOk) {
-        console.error('[SelfMutation] Compilación fallida — ejecutando rollback automático');
+        console.error('[SelfMutation] ❌ Compilación fallida — ejecutando rollback automático');
         this.rollback(planId);
         plan.status = 'failed';
         return { success: false, plan, errors: [...errors, 'Compilación TypeScript fallida — cambios revertidos'], compilationOk: false, testsPass: false };
       }
 
       plan.status = 'applied';
+      console.log(`[SelfMutation] ✅ Plan aplicado exitosamente con ${errors.length} errores menores`);
       return { success: true, plan, errors, compilationOk, testsPass: true };
 
     } catch (err) {
-      // Rollback en caso de error
       this.rollback(planId);
       plan.status = 'failed';
       return {
@@ -286,15 +384,12 @@ export class SelfMutationEngine {
       if (!existsSync(backupPath)) return false;
 
       for (const proposal of plan.proposal) {
-        // Normalizar ambos tipos de slashes
         const normalizedFile = proposal.file.replace(/[\\/]/g, '_');
         const backupFile = resolve(backupPath, normalizedFile);
         const targetFile = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
         if (existsSync(backupFile)) {
           copyFileSync(backupFile, targetFile);
-          console.log(`[SelfMutation] Revertido: ${proposal.file}`);
-        } else {
-          console.warn(`[SelfMutation] Backup no encontrado: ${backupFile}`);
+          console.log(`[SelfMutation] ↩️ Revertido: ${proposal.file}`);
         }
       }
 
@@ -323,118 +418,60 @@ export class SelfMutationEngine {
   // ============================================================
 
   private async generateProposal(target: MutationTarget): Promise<MutationProposal | null> {
-    // Normalizar path a forward slashes para consistencia
     const normalizedPath = target.relativePath.replace(/\\/g, '/');
+    const maxLines = this.config.maxLinesPerFile || 80;
 
-    const systemPrompt = `You are DevMind Self-Mutation, a system that improves its own source code.
-Analyze the file ${normalizedPath} and propose ONE small, safe improvement.
+    // Solo enviar las primeras líneas relevantes del código
+    const codeSnippet = target.currentCode.split('\n').slice(0, maxLines).join('\n');
 
-Detected issues:
-${target.issues.map(i => `- ${i}`).join('\n')}
+    // Prompt más corto y directo para mejor tasa de éxito
+    const systemPrompt = `You are DevMind Self-Mutation. Propose ONE small, safe improvement for ${normalizedPath}.
 
-Improvement areas:
-${target.improvementAreas.map(a => `- ${a}`).join('\n')}
+Issues found: ${target.issues.slice(0, 3).join('; ')}
+Improvements possible: ${target.improvementAreas.slice(0, 3).join('; ')}
 
-Current code (first ${this.config.maxLinesPerFile || 200} lines):
-${target.currentCode.split('\n').slice(0, this.config.maxLinesPerFile || 200).join('\n')}
+Code (first ${maxLines} lines):
+${codeSnippet}
 
-Respond with EXACTLY this JSON format (no markdown, no backticks, no code fences, pure JSON only):
-{"file":"${normalizedPath}","description":"Short description","reasoning":"Why this improvement is beneficial","oldCode":"exact code to replace (3-10 lines)","newCode":"improved code","riskLevel":"low","category":"bugfix"}
+Reply with ONLY this JSON (no markdown, no code fences):
+{"file":"${normalizedPath}","description":"Short description","reasoning":"Why","oldCode":"exact 3-10 line code","newCode":"improved code","riskLevel":"low","category":"bugfix"}
 
-STRICT RULES:
-- ONLY propose changes that will NOT break TypeScript compilation
-- Do NOT change sync functions to async (breaks compilation)
-- Do NOT add new imports unless absolutely necessary
-- Do NOT remove existing functionality
-- Do NOT change function signatures or public interfaces
-- Do NOT change readFileSync to readFile (requires async refactor)
-- Do NOT change require() to import (breaks ESM/CJS compatibility)
-- PREFER: adding console.error to empty catch blocks, fixing typos in comments, adding missing error handling, replacing deprecated patterns
-- oldCode must be EXACT code from the file (character-perfect match, 3-10 lines)
-- newCode must be complete, functional TypeScript that compiles without errors
-- Keep changes SMALL and CONSERVATIVE (3-10 lines changed max)
-- Use forward slashes in file paths (src/file.ts not src\\file.ts)
-- If no safe improvement exists, respond with: {"skip":true}
-- IMPORTANT: Output ONLY the JSON object, nothing else`;
+Rules: No sync→async, no readFileSync→readFile, no new imports, no signature changes. Keep 3-10 lines. If no safe fix, reply: {"skip":true}`;
 
     try {
       const messages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze ${normalizedPath} and propose one concrete, safe improvement as JSON.` },
+        { role: 'user', content: `Propose one safe improvement for ${normalizedPath}.` },
       ];
 
       const response = await this.llmRouter.callWithFallback(messages, `self-mutation ${normalizedPath}`);
       const content = response.choices[0]?.message?.content || '';
 
-      // Parsear respuesta JSON con múltiples estrategias
-      let parsed: any;
-      try {
-        // Estrategia 1: Extraer JSON de code blocks markdown
-        let jsonStr = content;
-
-        // Remover code fences si existen
-        const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-        if (codeBlockMatch) {
-          jsonStr = codeBlockMatch[1].trim();
-        }
-
-        // Estrategia 2: Buscar el primer { ... } balanceado
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return null;
-
-        // Estrategia 3: Limpiar caracteres problemáticos antes del JSON
-        let cleanJson = jsonMatch[0];
-        // Remover comillas escapadas mal formadas que rompen el parseo
-        cleanJson = cleanJson.replace(/\\n/g, '\\n');
-
-        parsed = JSON.parse(cleanJson);
-      } catch (parseErr) {
-        // Último intento: buscar campos individualmente con regex
-        try {
-          const descMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
-          const oldMatch = content.match(/"oldCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-          const newMatch = content.match(/"newCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-
-          if (!oldMatch || !newMatch) {
-            console.warn('[SelfMutation] No se pudo extraer oldCode/newCode de la respuesta del LLM');
-            return null;
-          }
-
-          parsed = {
-            description: descMatch?.[1] || 'Mejora de código',
-            reasoning: (content.match(/"reasoning"\s*:\s*"([^"]+)"/)?.[1]) || '',
-            oldCode: JSON.parse(`"${oldMatch[1]}"`),
-            newCode: JSON.parse(`"${newMatch[1]}"`),
-            riskLevel: (content.match(/"riskLevel"\s*:\s*"([^"]+)"/)?.[1]) || 'medium',
-            category: (content.match(/"category"\s*:\s*"([^"]+)"/)?.[1]) || 'refactor',
-          };
-        } catch {
-          console.warn('[SelfMutation] No se pudo parsear respuesta del LLM después de múltiples intentos');
-          return null;
-        }
+      // Si la respuesta es muy corta o vacía, descartar
+      if (!content || content.length < 20) {
+        console.warn(`[SelfMutation] Respuesta vacía para ${normalizedPath}`);
+        return null;
       }
 
-      if (parsed.skip || !parsed.oldCode || !parsed.newCode) return null;
+      const parsed = this.parseProposalResponse(content, normalizedPath);
+      if (!parsed || parsed.skip || !parsed.oldCode || !parsed.newCode) return null;
 
-      // Normalizar path en el resultado
-      const filePath = (parsed.file || normalizedPath).replace(/\\/g, '/');
-
-      // Verificar que oldCode existe en el archivo actual (con tolerancia)
+      // Verificar que oldCode existe en el archivo actual
       const trimmedOld = parsed.oldCode.trim();
       if (!target.currentCode.includes(trimmedOld)) {
-        // Segundo intento: buscar sin los primeros/últimos espacios
-        const oldLines = trimmedOld.split('\n');
-        const coreOld = oldLines.map((l: string) => l.trim()).filter((l: string) => l.length > 0).join('\n');
+        // Segundo intento: buscar líneas coincidentes
+        const oldLines = trimmedOld.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+        const coreOld = oldLines.join('\n');
         const coreCurrent = target.currentCode.split('\n').map((l: string) => l.trim()).join('\n');
 
         if (!coreCurrent.includes(coreOld)) {
-          console.warn(`[SelfMutation] oldCode no encontrado en ${normalizedPath} — descartando propuesta`);
+          console.warn(`[SelfMutation] oldCode no encontrado en ${normalizedPath} — descartando`);
           return null;
         }
       }
 
       return {
-        file: filePath,
+        file: (parsed.file || normalizedPath).replace(/\\/g, '/'),
         description: parsed.description || 'Mejora de código',
         reasoning: parsed.reasoning || '',
         oldCode: parsed.oldCode,
@@ -443,9 +480,120 @@ STRICT RULES:
         category: parsed.category || 'refactor',
       };
     } catch (err) {
-      console.warn(`[SelfMutation] Error generando propuesta: ${err instanceof Error ? err.message : String(err)}`);
+      console.warn(`[SelfMutation] Error: ${err instanceof Error ? err.message : String(err)}`);
       return null;
     }
+  }
+
+  /**
+   * Parsear respuesta JSON del LLM con múltiples estrategias
+   */
+  private parseProposalResponse(content: string, fallbackFile: string): any | null {
+    try {
+      // Estrategia 1: Remover code fences
+      let jsonStr = content;
+      const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim();
+      }
+
+      // Estrategia 2: Buscar primer { ... }
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      // Estrategia 3: Extraer campos con regex
+      try {
+        const descMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
+        const oldMatch = content.match(/"oldCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+        const newMatch = content.match(/"newCode"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+
+        if (!oldMatch || !newMatch) return null;
+
+        return {
+          description: descMatch?.[1] || 'Mejora',
+          reasoning: (content.match(/"reasoning"\s*:\s*"([^"]+)"/)?.[1]) || '',
+          oldCode: JSON.parse(`"${oldMatch[1]}"`),
+          newCode: JSON.parse(`"${newMatch[1]}"`),
+          riskLevel: (content.match(/"riskLevel"\s*:\s*"([^"]+)"/)?.[1]) || 'medium',
+          category: (content.match(/"category"\s*:\s*"([^"]+)"/)?.[1]) || 'refactor',
+          file: fallbackFile,
+        };
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  /**
+   * Parsear respuesta batch (array JSON) del LLM
+   */
+  private parseBatchResponse(content: string, targets: MutationTarget[]): MutationProposal[] {
+    const proposals: MutationProposal[] = [];
+
+    try {
+      // Remover code fences
+      let jsonStr = content;
+      const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) jsonStr = codeBlockMatch[1].trim();
+
+      // Buscar array JSON
+      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+      if (!arrayMatch) {
+        // Quizás es un solo objeto, no un array
+        const singleMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (singleMatch) {
+          const parsed = this.parseProposalResponse(content, '');
+          if (parsed && !parsed.skip && parsed.oldCode && parsed.newCode) {
+            proposals.push({
+              file: parsed.file || targets[0]?.relativePath.replace(/\\/g, '/') || '',
+              description: parsed.description || 'Mejora',
+              reasoning: parsed.reasoning || '',
+              oldCode: parsed.oldCode,
+              newCode: parsed.newCode,
+              riskLevel: parsed.riskLevel || 'medium',
+              category: parsed.category || 'refactor',
+            });
+          }
+        }
+        return proposals;
+      }
+
+      const items = JSON.parse(arrayMatch[0]) as any[];
+      for (const item of items) {
+        if (item.skip || !item.oldCode || !item.newCode) continue;
+
+        // Buscar el target correspondiente para verificar oldCode
+        const filePath = (item.file || '').replace(/\\/g, '/');
+        const target = targets.find(t => t.relativePath.replace(/\\/g, '/') === filePath);
+
+        if (target) {
+          const trimmedOld = item.oldCode.trim();
+          const coreCurrent = target.currentCode.split('\n').map(l => l.trim()).join('\n');
+          const coreOld = trimmedOld.split('\n').map((l: string) => l.trim()).join('\n');
+
+          if (!coreCurrent.includes(coreOld) && !target.currentCode.includes(trimmedOld)) {
+            console.warn(`[SelfMutation] Batch: oldCode no encontrado en ${filePath} — descartando`);
+            continue;
+          }
+        }
+
+        proposals.push({
+          file: filePath,
+          description: item.description || 'Mejora',
+          reasoning: item.reasoning || '',
+          oldCode: item.oldCode,
+          newCode: item.newCode,
+          riskLevel: item.riskLevel || 'medium',
+          category: item.category || 'refactor',
+        });
+      }
+    } catch (err) {
+      console.warn(`[SelfMutation] Batch parse failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    return proposals;
   }
 
   private detectIssues(content: string, lines: string[], issues: string[]): void {
@@ -462,7 +610,7 @@ STRICT RULES:
       issues.push('catch sin console.error — errores silenciosos');
     }
 
-    // Código duplicado simple (funciones idénticas)
+    // Código duplicado simple
     const funcMatches = content.match(/(?:function|const|let)\s+\w+\s*[=(]/g) || [];
     const funcNames = funcMatches.map(m => m.replace(/\s*[=(].*/, '').replace(/(?:function|const|let)\s+/, ''));
     const duplicates = funcNames.filter((n, i) => funcNames.indexOf(n) !== i);
@@ -470,7 +618,7 @@ STRICT RULES:
       issues.push(`Posible duplicación: ${[...new Set(duplicates)].join(', ')}`);
     }
 
-    // Dependencias de terceros que podrían eliminarse
+    // Dependencias redundantes
     if (content.includes('fetch(') && content.includes('axios')) {
       issues.push('Usa fetch y axios — puede eliminar axios (redundante)');
     }
@@ -482,7 +630,7 @@ STRICT RULES:
       issues.push(`${unhandledPromises - catchHandlers} promesas sin .catch()`);
     }
 
-    // Console.log en producción
+    // Console.log excesivo
     const consoleLogs = (content.match(/console\.log\(/g) || []).length;
     if (consoleLogs > 10) {
       issues.push(`${consoleLogs} console.log — considerar sistema de logging`);
@@ -490,22 +638,17 @@ STRICT RULES:
   }
 
   private detectImprovements(content: string, filePath: string, areas: string[]): void {
-    const rel = filePath.replace(/\\/g, '/');
-
     // Eliminar APIs de terceros cuando es posible
     if (content.includes('pollinations.ai') || content.includes('image.pollinations')) {
-      areas.push('Generación de imágenes: podría usar Canvas API nativa para imágenes procedurales');
+      areas.push('Generación de imágenes: podría usar Canvas API nativa');
     }
     if (content.includes('openrouter.ai') || content.includes('groq')) {
-      areas.push('Dependencia de API externa: podría generar respuestas con modelos locales (ONNX/WebLLM)');
-    }
-    if (content.includes('chart.js') || content.includes('Chart')) {
-      areas.push('Chart.js: podría usar Canvas nativo para gráficos simples');
+      areas.push('Dependencia de API externa: podría usar modelos locales');
     }
 
     // Performance
     if (content.includes('readFileSync') && content.length > 5000) {
-      areas.push('readFileSync bloquea el event loop — considerar readFile async');
+      areas.push('readFileSync bloquea el event loop — considerar async');
     }
     if (content.includes('for (') && content.includes('await') && !content.includes('Promise.all')) {
       areas.push('Bucle con await secuencial — podría paralelizar con Promise.all');
@@ -520,14 +663,14 @@ STRICT RULES:
     }
 
     // Capacidades auto-generadas
-    if (rel.includes('dashboard') && content.includes('placeholder')) {
-      areas.push('Paneles placeholder: podrían auto-generarse con plantillas inteligentes');
+    if (filePath.includes('dashboard') && content.includes('placeholder')) {
+      areas.push('Paneles placeholder: podrían auto-generarse');
     }
-    if (rel.includes('agent') && content.includes('spawnSync')) {
-      areas.push('spawnSync bloquea — usar spawn async para shells');
+    if (filePath.includes('agent') && content.includes('spawnSync')) {
+      areas.push('spawnSync bloquea — usar spawn async');
     }
-    if (rel.includes('image-provider') && !content.includes('Canvas')) {
-      areas.push('Generación de imágenes: agregar Canvas API como alternativa nativa sin dependencias');
+    if (filePath.includes('image-provider') && !content.includes('Canvas')) {
+      areas.push('Agregar Canvas API como alternativa nativa');
     }
   }
 
@@ -563,15 +706,12 @@ STRICT RULES:
     mkdirSync(backupPath, { recursive: true });
 
     for (const proposal of plan.proposal) {
-      // Normalizar path: tanto / como \ se convierten en _
       const normalizedFile = proposal.file.replace(/[\\/]/g, '_');
       const sourceFile = resolve(this.projectRoot, proposal.file.replace(/\\/g, '/'));
       if (existsSync(sourceFile)) {
         const backupFile = resolve(backupPath, normalizedFile);
         copyFileSync(sourceFile, backupFile);
-        console.log(`[SelfMutation] Backup: ${sourceFile} → ${backupFile}`);
-      } else {
-        console.warn(`[SelfMutation] No se encontró ${sourceFile} para backup`);
+        console.log(`[SelfMutation] 📦 Backup: ${proposal.file}`);
       }
     }
   }
