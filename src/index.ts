@@ -522,12 +522,12 @@ async function main(): Promise<void> {
     return;
   }
 
-  // AUTO-MUTATE: Ejecutar tarea con auto-mutación
+  // AUTO-MUTATE: Ejecutar tarea con auto-mutación (solo cambia modelos LLM)
   if (args.includes('--auto-mutate')) {
     const taskIndex = args.indexOf('--auto-mutate') + 1;
     const task = args[taskIndex] || 'Analizar la estructura del proyecto y sugerir mejoras';
 
-    console.log(`🧬 Modo Auto-Mutation: "${task}"\n`);
+    console.log(`🧬 Modo Auto-Mutation (modelos): "${task}"\n`);
 
     await taskManager.startAllTasks();
 
@@ -555,6 +555,143 @@ async function main(): Promise<void> {
     }
 
     await taskManager.stopAllTasks();
+    return;
+  }
+
+  // SELF-MUTATE: La plataforma se reescribe a sí misma con mejoras
+  // Este es el verdadero auto-mutation: lee su propio código, propone
+  // mejoras via LLM, y se reescribe. Funciona con CUALQUIER LLM activo.
+  if (args.includes('--self-mutate')) {
+    const isDryRun = args.includes('--dry-run');
+    const isAutoApply = args.includes('--yes') || args.includes('--auto-apply');
+    const focusFile = args[args.indexOf('--self-mutate') + 1];
+    const focusArg = focusFile && !focusFile.startsWith('--') ? focusFile : undefined;
+
+    console.log(`\n╔══════════════════════════════════════════════════════════╗`);
+    console.log(`║  🧬 Self-Mutation: La plataforma se reescribe a sí misma  ║`);
+    console.log(`║  📋 Modo: ${isDryRun ? 'DRY-RUN (simulación)' : isAutoApply ? 'AUTO-APPLY' : 'INTERACTIVO'}                          ║`);
+    console.log(`╚══════════════════════════════════════════════════════════╝\n`);
+
+    const { SelfMutationEngine } = await import('./core/self-mutation.js');
+    const engine = new SelfMutationEngine(process.cwd(), llmRouter, {
+      dryRun: isDryRun,
+      autoApply: isAutoApply,
+      maxFilesPerPlan: focusArg ? 1 : 5,
+    });
+
+    // PASO 1: Analizar
+    console.log('🔍 PASO 1: Analizando código fuente...\n');
+    const targets = await engine.analyze();
+
+    if (targets.length === 0) {
+      console.log('✅ No se encontraron mejoras posibles. ¡Tu código está en excelente estado!');
+      return;
+    }
+
+    // Filtrar por archivo específico si se proporcionó
+    const filteredTargets = focusArg
+      ? targets.filter(t => t.relativePath.includes(focusArg))
+      : targets;
+
+    if (filteredTargets.length === 0 && focusArg) {
+      console.log(`⚠️ No se encontraron issues en "${focusArg}". Mostrando todos...`);
+    }
+
+    const displayTargets = filteredTargets.length > 0 ? filteredTargets : targets;
+
+    console.log(`📊 ${displayTargets.length} archivos con mejoras posibles:\n`);
+    for (const t of displayTargets.slice(0, 10)) {
+      console.log(`  📄 ${t.relativePath} (${t.lineCount} líneas)`);
+      for (const issue of t.issues.slice(0, 3)) {
+        console.log(`     ⚠️ ${issue}`);
+      }
+      for (const area of t.improvementAreas.slice(0, 3)) {
+        console.log(`     💡 ${area}`);
+      }
+    }
+
+    // PASO 2: Generar propuestas
+    console.log('\n🤖 PASO 2: Pidiendo al LLM que proponga mejoras...\n');
+    const plan = await engine.propose(displayTargets);
+
+    if (plan.proposal.length === 0) {
+      console.log('🤷 El LLM no generó propuestas concretas. Intentá de nuevo más tarde.');
+      return;
+    }
+
+    console.log(`\n📋 Plan de Mutación: ${plan.id}`);
+    console.log(`   Resumen: ${plan.summary}\n`);
+
+    for (let i = 0; i < plan.proposal.length; i++) {
+      const p = plan.proposal[i];
+      console.log(`  ┌─ Propuesta ${i + 1}/${plan.proposal.length} ─────────────────────────`);
+      console.log(`  │ 📄 Archivo:    ${p.file}`);
+      console.log(`  │ 📝 Descripción: ${p.description}`);
+      console.log(`  │ 🤔 Razón:      ${p.reasoning}`);
+      console.log(`  │ ⚡ Riesgo:     ${p.riskLevel}`);
+      console.log(`  │ 🏷️ Categoría:  ${p.category}`);
+      console.log(`  │`);
+      console.log(`  │ ── CÓDIGO A REEMPLAZAR ──`);
+      for (const line of p.oldCode.split('\n').slice(0, 10)) {
+        console.log(`  │ - ${line}`);
+      }
+      if (p.oldCode.split('\n').length > 10) console.log(`  │   ... (${p.oldCode.split('\n').length - 10} líneas más)`);
+      console.log(`  │`);
+      console.log(`  │ ── NUEVO CÓDIGO ──`);
+      for (const line of p.newCode.split('\n').slice(0, 10)) {
+        console.log(`  │ + ${line}`);
+      }
+      if (p.newCode.split('\n').length > 10) console.log(`  │   ... (${p.newCode.split('\n').length - 10} líneas más)`);
+      console.log(`  └──────────────────────────────────────\n`);
+    }
+
+    if (isDryRun) {
+      console.log('🏃 DRY-RUN: No se aplicaron cambios. Usá --self-mutate sin --dry-run para aplicar.');
+      return;
+    }
+
+    // PASO 3: Confirmación interactiva (saltear si --yes)
+    if (!isAutoApply) {
+      const readline = await import('readline');
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+      const answer = await new Promise<string>(resolve => {
+        rl.question('¿Aplicar estas mejoras? (s/n): ', ans => {
+          rl.close();
+          resolve(ans.trim().toLowerCase());
+        });
+      });
+
+      if (answer !== 's' && answer !== 'si' && answer !== 'y' && answer !== 'yes') {
+        console.log('❌ Mutación cancelada por el usuario.');
+        return;
+      }
+    }
+
+    // PASO 4: Aprobar y aplicar
+    console.log('\n🚀 PASO 3: Aplicando mejoras...\n');
+    engine.approve(plan.id);
+    const result = await engine.apply(plan.id);
+
+    if (result.success) {
+      console.log('\n✅ ¡Mutación aplicada exitosamente!');
+      console.log(`   Compilación: ${result.compilationOk ? '✅ OK' : '❌ FALLIDA'}`);
+      console.log(`   Propuestas aplicadas: ${result.plan.proposal.length}`);
+      for (const p of result.plan.proposal) {
+        console.log(`   ✅ ${p.description} (${p.file})`);
+      }
+      console.log('\n💡 Para revertir: usá el endpoint /api/mutation/rollback desde el dashboard');
+      console.log('   O ejecutá: curl -X POST http://localhost:3002/api/mutation/rollback -H "Content-Type: application/json" -d \'{"planId":"' + plan.id + '"}\'');
+    } else {
+      console.log('\n❌ Mutación fallida:');
+      for (const err of result.errors) {
+        console.log(`   ⚠️ ${err}`);
+      }
+      if (!result.compilationOk) {
+        console.log('   🔧 Los cambios fueron revertidos automáticamente (rollback ejecutado)');
+      }
+    }
+
     return;
   }
 

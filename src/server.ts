@@ -5,14 +5,12 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { z } from 'zod';
 import type { AgentCore, LLMMessage } from './types.js';
-import type { LLMRouter } from './llm-router.js';
 
 interface ServerConfig {
   port: number;
   agentCore: AgentCore;
   apiKey: string;
   allowedOrigins?: string[];
-  llmRouter?: LLMRouter;
 }
 
 // --- Rate Limiter ---
@@ -136,10 +134,6 @@ export class RestAPIServer {
         this.handleStatus(res);
       } else if (url === '/api/v1/memory' && method === 'GET') {
         await this.handleMemory(req, res);
-      } else if (url === '/api/v1/providers/status' && method === 'GET') {
-        this.handleProvidersStatus(res);
-      } else if (url === '/api/v1/providers/default' && method === 'POST') {
-        await this.handleProvidersDefault(req, res);
       } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Endpoint no encontrado' }));
@@ -258,46 +252,6 @@ export class RestAPIServer {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Error accediendo a la memoria' }));
     }
-  }
-
-  private handleProvidersStatus(res: ServerResponse): void {
-    if (!this.config.llmRouter) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, data: [] }));
-      return;
-    }
-    const stats = this.config.llmRouter.getStats();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: true, data: stats.providerList }));
-  }
-
-  private async handleProvidersDefault(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (!this.config.llmRouter) {
-      res.writeHead(501, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'LLM Router no configurado' }));
-      return;
-    }
-
-    const body = await this.readBody(req);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'JSON inválido' }));
-      return;
-    }
-
-    const { provider } = parsed as { provider?: string };
-    if (!provider || typeof provider !== 'string') {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Campo "provider" requerido' }));
-      return;
-    }
-
-    const success = this.config.llmRouter.setDefaultProvider(provider);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success, defaultProvider: this.config.llmRouter.getDefaultProviderId() }));
   }
 
   private readBody(req: IncomingMessage, maxBytes = 1_000_000): Promise<string> {

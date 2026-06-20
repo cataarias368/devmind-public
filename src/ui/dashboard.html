@@ -477,6 +477,7 @@ input,textarea{font-family:inherit}
         <div class="nav-group-label">&#x1F517; Integraciones <span class="chevron">&#x25B6;</span></div>
         <div class="nav-group-children">
           <div class="nav-item" data-panel="github">&#x1F418; GitHub</div>
+          <div class="nav-item" data-panel="mutation">&#x1F9EC; Auto-Mutación</div>
           <div class="nav-item" data-panel="providers">&#x1F50C; API Providers</div>
           <div class="nav-item" data-panel="bots">&#x1F916; Bots</div>
         </div>
@@ -725,6 +726,54 @@ input,textarea{font-family:inherit}
           <div style="font-size:3rem;margin-bottom:0.5rem">🎬</div>
           <p>Creá videos con efectos cinematográficos reales</p>
           <p style="font-size:0.8rem;color:#6e7a8a">Ken Burns + transiciones + exportación WebM — 100% gratis</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ AUTO-MUTACIÓN ═══ -->
+    <section id="panel-mutation" class="panel">
+      <div class="panel-title"><span class="icon">&#x1F9EC;</span> Auto-Mutación</div>
+      <div style="padding:1.5rem">
+        <div style="margin-bottom:1.5rem">
+          <p style="color:#8b9bb5;font-size:0.9rem;margin-bottom:0.5rem">La plataforma se analiza a sí misma, detecta mejoras posibles, y genera propuestas usando el LLM de turno. Siempre ves qué va a cambiar antes de aplicarlo.</p>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem">
+            <span style="background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.2);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:#58a6ff">&#x1F50D; Analizar</span>
+            <span style="color:#6e7a8a;font-size:0.8rem">→</span>
+            <span style="background:rgba(163,113,247,0.1);border:1px solid rgba(163,113,247,0.2);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:#a371f7">&#x1F4DD; Proponer</span>
+            <span style="color:#6e7a8a;font-size:0.8rem">→</span>
+            <span style="background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.2);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:#3fb950">&#x2705; Revisar</span>
+            <span style="color:#6e7a8a;font-size:0.8rem">→</span>
+            <span style="background:rgba(247,120,186,0.1);border:1px solid rgba(247,120,186,0.2);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:#f778ba">&#x1F680; Aplicar</span>
+          </div>
+        </div>
+
+        <!-- Controles -->
+        <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
+          <button id="btn-mutate-analyze" onclick="mutationAnalyze()" style="padding:0.75rem 1.25rem;background:linear-gradient(135deg,#58a6ff,#3fb950);border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer;transition:transform 0.15s" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">&#x1F50D; Analizar Código</button>
+          <button id="btn-mutate-propose" onclick="mutationPropose()" disabled style="padding:0.75rem 1.25rem;background:rgba(163,113,247,0.3);border:1px solid rgba(163,113,247,0.5);border-radius:8px;color:#a371f7;font-weight:600;cursor:pointer;opacity:0.5">&#x1F4DD; Generar Propuestas</button>
+          <button id="btn-mutate-apply" onclick="mutationApply()" disabled style="padding:0.75rem 1.25rem;background:rgba(63,185,80,0.3);border:1px solid rgba(63,185,80,0.5);border-radius:8px;color:#3fb950;font-weight:600;cursor:pointer;opacity:0.5">&#x1F680; Aplicar Mejoras</button>
+          <button id="btn-mutate-rollback" onclick="mutationRollback()" style="padding:0.75rem 1.25rem;background:rgba(248,81,73,0.15);border:1px solid rgba(248,81,73,0.3);border-radius:8px;color:#f85149;font-weight:600;cursor:pointer">&#x21A9;&#xFE0F; Rollback</button>
+        </div>
+
+        <!-- Status -->
+        <div id="mut-status" style="display:none;padding:0.75rem;margin-bottom:1rem;border-radius:8px;font-size:0.9rem;text-align:center"></div>
+
+        <!-- Targets encontrados -->
+        <div id="mut-targets" style="display:none;margin-bottom:1.5rem">
+          <h3 style="color:#e6edf5;font-size:1rem;margin-bottom:0.75rem">&#x1F50D; Archivos Analizados</h3>
+          <div id="mut-targets-list" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+        </div>
+
+        <!-- Propuestas -->
+        <div id="mut-proposals" style="display:none;margin-bottom:1.5rem">
+          <h3 style="color:#e6edf5;font-size:1rem;margin-bottom:0.75rem">&#x1F4DD; Propuestas de Mejora</h3>
+          <div id="mut-proposals-list" style="display:flex;flex-direction:column;gap:0.75rem"></div>
+        </div>
+
+        <!-- Historial -->
+        <div id="mut-history" style="margin-top:1.5rem">
+          <h3 style="color:#e6edf5;font-size:1rem;margin-bottom:0.75rem">&#x1F4CA; Historial de Mutaciones</h3>
+          <div id="mut-history-list" style="color:#6e7a8a;font-size:0.85rem">No hay mutaciones previas</div>
         </div>
       </div>
     </section>
@@ -1824,6 +1873,195 @@ input,textarea{font-family:inherit}
         if(vidStatus){vidStatus.textContent='❌ Tu navegador no soporta grabación de video. Probá Chrome o Edge.';}
       }
     };
+    // === AUTO-MUTATION ENGINE ===
+    let mutationPlanId=null;
+
+    window.mutationAnalyze=async function(){
+      const btn=document.getElementById('btn-mutate-analyze');
+      const status=document.getElementById('mut-status');
+      if(btn){btn.disabled=true;btn.textContent='⏳ Analizando...';}
+      if(status){status.style.display='block';status.style.background='rgba(88,166,255,0.1)';status.style.border='1px solid rgba(88,166,255,0.2)';status.style.color='#58a6ff';status.textContent='🔍 Escaneando código fuente...';}
+
+      try{
+        const r=await fetch('/api/mutation/analyze');
+        const data=await r.json();
+
+        if(data.success){
+          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.totalTargets+' archivos con mejoras posibles';}
+
+          // Mostrar targets
+          const targetsDiv=document.getElementById('mut-targets');
+          const targetsList=document.getElementById('mut-targets-list');
+          if(targetsDiv) targetsDiv.style.display='block';
+          if(targetsList) targetsList.innerHTML='';
+
+          for(const t of data.targets){
+            const item=document.createElement('div');
+            item.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.75rem';
+            const name=document.createElement('div');
+            name.style.cssText='color:#e6edf5;font-size:0.85rem;font-weight:600;margin-bottom:0.25rem';
+            name.textContent=t.file;
+            const issues=document.createElement('div');
+            issues.style.cssText='color:#8b9bb5;font-size:0.75rem';
+            issues.textContent=t.issues.length+' issues, '+t.improvementAreas.length+' mejoras — '+t.lineCount+' líneas';
+            item.appendChild(name);item.appendChild(issues);
+            if(targetsList) targetsList.appendChild(item);
+          }
+
+          // Habilitar botón Proponer
+          const proposeBtn=document.getElementById('btn-mutate-propose');
+          if(proposeBtn){proposeBtn.disabled=false;proposeBtn.style.opacity='1';}
+        }else{
+          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+data.error;}
+        }
+      }catch(e){
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='🔍 Analizar Código';}
+      }
+    };
+
+    window.mutationPropose=async function(){
+      const btn=document.getElementById('btn-mutate-propose');
+      const status=document.getElementById('mut-status');
+      if(btn){btn.disabled=true;btn.textContent='⏳ Generando...';}
+      if(status){status.style.display='block';status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='🧬 El LLM está analizando las mejoras posibles... Esto puede tardar 30-60 segundos';}
+
+      try{
+        const r=await fetch('/api/mutation/propose',{method:'POST'});
+        const data=await r.json();
+
+        if(data.success&&data.plan){
+          mutationPlanId=data.plan.id;
+          if(status){status.style.background='rgba(163,113,247,0.1)';status.style.border='1px solid rgba(163,113,247,0.2)';status.style.color='#a371f7';status.textContent='📝 '+data.plan.proposals.length+' propuestas generadas — Revisá antes de aplicar';}
+
+          // Mostrar propuestas
+          const proposalsDiv=document.getElementById('mut-proposals');
+          const proposalsList=document.getElementById('mut-proposals-list');
+          if(proposalsDiv) proposalsDiv.style.display='block';
+          if(proposalsList) proposalsList.innerHTML='';
+
+          for(const p of data.plan.proposals){
+            const card=document.createElement('div');
+            card.style.cssText='background:rgba(255,255,255,0.03);border:1px solid rgba(163,113,247,0.2);border-radius:10px;padding:1rem';
+            const riskColors={low:'#3fb950',medium:'#d29922',high:'#f85149'};
+            const catIcons={performance:'⚡',feature:'✨',bugfix:'🐛',refactor:'🔄',security:'🔒',dependency:'📦'};
+            const header=document.createElement('div');
+            header.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem';
+            header.innerHTML='<span style="color:#e6edf5;font-weight:600;font-size:0.9rem">'+(catIcons[p.category]||'📝')+' '+p.description+'</span><span style="background:'+riskColors[p.riskLevel]+'22;border:1px solid '+riskColors[p.riskLevel]+'44;border-radius:4px;padding:2px 8px;font-size:0.7rem;color:'+riskColors[p.riskLevel]+'">'+p.riskLevel.toUpperCase()+'</span>';
+            const file=document.createElement('div');
+            file.style.cssText='color:#58a6ff;font-size:0.8rem;margin-bottom:0.5rem';
+            file.textContent='📁 '+p.file;
+            const reason=document.createElement('div');
+            reason.style.cssText='color:#8b9bb5;font-size:0.8rem;margin-bottom:0.75rem';
+            reason.textContent=p.reasoning;
+            const diff=document.createElement('div');
+            diff.style.cssText='font-family:monospace;font-size:0.75rem;background:rgba(0,0,0,0.3);border-radius:6px;padding:0.5rem;overflow-x:auto';
+            diff.innerHTML='<div style="color:#f85149">- '+p.oldCodePreview.replace(/</g,'&lt;').split('\\n').join('<br>- ')+'</div><div style="color:#3fb950;margin-top:0.5rem">+ '+p.newCodePreview.replace(/</g,'&lt;').split('\\n').join('<br>+ ')+'</div>';
+            card.appendChild(header);card.appendChild(file);card.appendChild(reason);card.appendChild(diff);
+            if(proposalsList) proposalsList.appendChild(card);
+          }
+
+          // Habilitar botón Aplicar
+          const applyBtn=document.getElementById('btn-mutate-apply');
+          if(applyBtn){applyBtn.disabled=false;applyBtn.style.opacity='1';}
+        }else{
+          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ '+(data.error||'No se generaron propuestas');}
+        }
+      }catch(e){
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='📝 Generar Propuestas';}
+      }
+    };
+
+    window.mutationApply=async function(){
+      if(!mutationPlanId) return;
+      if(!confirm('¿Aplicar las mejoras propuestas? Se creará un backup automático y se verificará la compilación.')) return;
+
+      const btn=document.getElementById('btn-mutate-apply');
+      const status=document.getElementById('mut-status');
+      if(btn){btn.disabled=true;btn.textContent='⏳ Aplicando...';}
+      if(status){status.style.display='block';status.style.background='rgba(247,120,186,0.1)';status.style.border='1px solid rgba(247,120,186,0.2)';status.style.color='#f778ba';status.textContent='🚀 Aplicando cambios y verificando compilación...';}
+
+      try{
+        const r=await fetch('/api/mutation/apply',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({planId:mutationPlanId})
+        });
+        const data=await r.json();
+
+        if(data.success){
+          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ '+data.proposals.length+' mejoras aplicadas — Compilación OK';}
+          mutationPlanId=null;
+          const applyBtn=document.getElementById('btn-mutate-apply');
+          if(applyBtn){applyBtn.disabled=true;applyBtn.style.opacity='0.5';}
+          // Cargar historial
+          loadMutationHistory();
+        }else{
+          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Falló: '+(data.errors||[]).join(', ')+' — Rollback automático ejecutado';}
+        }
+      }catch(e){
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='🚀 Aplicar Mejoras';}
+      }
+    };
+
+    async function loadMutationHistory(){
+      try{
+        const r=await fetch('/api/mutation/history');
+        const data=await r.json();
+        const list=document.getElementById('mut-history-list');
+        if(list&&data.history&&data.history.length>0){
+          list.innerHTML='';
+          for(const h of data.history.reverse()){
+            const item=document.createElement('div');
+            item.style.cssText='background:rgba(255,255,255,0.03);border-radius:6px;padding:0.5rem;margin-bottom:0.25rem;display:flex;justify-content:space-between';
+            const statusColors={proposed:'#58a6ff',approved:'#a371f7',applied:'#3fb950',failed:'#f85149',rolled_back:'#d29922'};
+            item.innerHTML='<span style="color:#8b9bb5;font-size:0.8rem">'+h.summary+'</span><span style="color:'+(statusColors[h.status]||'#8b9bb5')+';font-size:0.75rem">'+h.status+'</span>';
+            list.appendChild(item);
+          }
+        }
+      }catch(e){}
+    }
+
+    window.mutationRollback=async function(){
+      if(!confirm('¿Revertir la última mutación aplicada?')) return;
+      const btn=document.getElementById('btn-mutate-rollback');
+      const status=document.getElementById('mut-status');
+      if(btn){btn.disabled=true;btn.textContent='⏳ Revirtiendo...';}
+      if(status){status.style.display='block';status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='↩️ Revirtiendo cambios...';}
+
+      try{
+        const history=await fetch('/api/mutation/history');
+        const histData=await history.json();
+        const lastApplied=histData.history&&histData.history.find((h:any)=>h.status==='applied');
+        if(!lastApplied){
+          if(status){status.style.color='#d29922';status.textContent='⚠️ No hay mutaciones aplicadas para revertir';}
+          return;
+        }
+        const r=await fetch('/api/mutation/rollback',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({planId:lastApplied.id})
+        });
+        const data=await r.json();
+        if(data.success){
+          if(status){status.style.background='rgba(63,185,80,0.1)';status.style.border='1px solid rgba(63,185,80,0.2)';status.style.color='#3fb950';status.textContent='✅ Cambios revertidos exitosamente';}
+          loadMutationHistory();
+        }else{
+          if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error: '+(data.error||'No se pudo revertir');}
+        }
+      }catch(e){
+        if(status){status.style.background='rgba(248,81,73,0.1)';status.style.border='1px solid rgba(248,81,73,0.2)';status.style.color='#f85149';status.textContent='❌ Error de conexión';}
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='↩️ Rollback';}
+      }
+    };
+
+    loadMutationHistory();
   }
 
   init();

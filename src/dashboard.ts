@@ -63,6 +63,7 @@ export class DashboardServer {
   private readonly logs: Array<{ level: string; message: string; timestamp: number }> = [];
   private readonly generatedImages: Array<{ prompt: string; url: string; filePath: string; timestamp: number; provider: string }> = [];
   private readonly generatedVideos: Array<{ title: string; scenes: number; totalDuration: number; timestamp: number; provider: string }> = [];
+  private mutationEngine: import('./core/self-mutation.js').SelfMutationEngine | null = null;
 
   constructor(config: DashboardConfig) {
     this.config = config;
@@ -151,6 +152,8 @@ export class DashboardServer {
       '/api/config/status', '/api/config/providers', '/api/config/apikey',
       '/api/images', '/api/images/generate',
       '/api/videos', '/api/videos/generate',
+      '/api/mutation/analyze', '/api/mutation/propose', '/api/mutation/apply',
+      '/api/mutation/rollback', '/api/mutation/history',
     ];
     const apiKeyConfigured = !!this.config.apiKey && this.config.apiKey !== 'devmind';
     if (url.startsWith('/api/') && !publicEndpoints.includes(url) && apiKeyConfigured) {
@@ -521,6 +524,182 @@ export class DashboardServer {
       if (url === '/api/videos' && method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ videos: this.generatedVideos.slice(-20) }));
+        return;
+      }
+
+      // API: Auto-Mutation — Analizar código propio
+      if (url === '/api/mutation/analyze' && method === 'GET') {
+        try {
+          if (!this.config.llmRouter) {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Se requiere un LLM para auto-mutación. Configurá una API Key.' }));
+            return;
+          }
+
+          if (!this.mutationEngine) {
+            const { SelfMutationEngine } = await import('./core/self-mutation.js');
+            const projectRoot = this.config.agentCore?.workspaceRoot || process.cwd();
+            // Subir al directorio raíz del proyecto (workspace está un nivel abajo)
+            const root = resolve(projectRoot, '..');
+            this.mutationEngine = new SelfMutationEngine(root, this.config.llmRouter);
+          }
+
+          this.log('info', 'Auto-Mutation: analizando código fuente...');
+          const targets = await this.mutationEngine.analyze();
+          this.log('info', `Auto-Mutation: ${targets.length} archivos con mejoras posibles`);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            targets: targets.slice(0, 20).map(t => ({
+              file: t.relativePath,
+              lineCount: t.lineCount,
+              issues: t.issues,
+              improvementAreas: t.improvementAreas,
+            })),
+            totalTargets: targets.length,
+          }));
+        } catch (err) {
+          this.log('error', `Mutation analyze error: ${err instanceof Error ? err.message : String(err)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error analizando código' }));
+        }
+        return;
+      }
+
+      // API: Auto-Mutation — Generar plan de mejoras
+      if (url === '/api/mutation/propose' && method === 'POST') {
+        try {
+          if (!this.mutationEngine) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Ejecutá /api/mutation/analyze primero' }));
+            return;
+          }
+
+          this.log('info', 'Auto-Mutation: generando plan de mejoras...');
+          const targets = await this.mutationEngine.analyze();
+          const plan = await this.mutationEngine.propose(targets);
+
+          this.log('info', `Auto-Mutation: plan ${plan.id} — ${plan.proposal.length} propuestas`);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            plan: {
+              id: plan.id,
+              timestamp: plan.timestamp,
+              status: plan.status,
+              summary: plan.summary,
+              proposals: plan.proposal.map(p => ({
+                file: p.file,
+                description: p.description,
+                reasoning: p.reasoning,
+                riskLevel: p.riskLevel,
+                category: p.category,
+                oldCodePreview: p.oldCode.slice(0, 200),
+                newCodePreview: p.newCode.slice(0, 200),
+              })),
+            },
+          }));
+        } catch (err) {
+          this.log('error', `Mutation propose error: ${err instanceof Error ? err.message : String(err)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error generando plan' }));
+        }
+        return;
+      }
+
+      // API: Auto-Mutation — Aprobar y aplicar plan
+      if (url === '/api/mutation/apply' && method === 'POST') {
+        try {
+          const body = await this.readBody(req);
+          let parsed: { planId?: string };
+          try { parsed = JSON.parse(body); } catch { parsed = {}; }
+
+          if (!this.mutationEngine) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No hay plan pendiente' }));
+            return;
+          }
+
+          // Aprobar el plan
+          const approved = this.mutationEngine.approve(parsed.planId || '');
+          if (!approved) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Plan no encontrado o ya procesado' }));
+            return;
+          }
+
+          // Aplicar
+          this.log('info', `Auto-Mutation: aplicando plan ${approved.id}...`);
+          const result = await this.mutationEngine.apply(approved.id);
+
+          if (result.success) {
+            this.log('info', `Auto-Mutation: plan ${approved.id} aplicado exitosamente`);
+          } else {
+            this.log('error', `Auto-Mutation: plan ${approved.id} falló — ${result.errors.join(', ')}`);
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: result.success,
+            planId: approved.id,
+            status: result.plan.status,
+            compilationOk: result.compilationOk,
+            errors: result.errors,
+            proposals: result.plan.proposal.map(p => ({
+              file: p.file,
+              description: p.description,
+              category: p.category,
+              applied: true,
+            })),
+          }));
+        } catch (err) {
+          this.log('error', `Mutation apply error: ${err instanceof Error ? err.message : String(err)}`);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error aplicando cambios' }));
+        }
+        return;
+      }
+
+      // API: Auto-Mutation — Rollback
+      if (url === '/api/mutation/rollback' && method === 'POST') {
+        try {
+          const body = await this.readBody(req);
+          let parsed: { planId?: string };
+          try { parsed = JSON.parse(body); } catch { parsed = {}; }
+
+          if (!this.mutationEngine) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'No hay motor de mutación' }));
+            return;
+          }
+
+          const rolledBack = this.mutationEngine.rollback(parsed.planId || '');
+          this.log(rolledBack ? 'info' : 'warn', `Auto-Mutation rollback ${rolledBack ? 'exitoso' : 'fallido'}`);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: rolledBack }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Error en rollback' }));
+        }
+        return;
+      }
+
+      // API: Auto-Mutation — Historial
+      if (url === '/api/mutation/history' && method === 'GET') {
+        const engine = this.mutationEngine;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          history: engine ? engine.getHistory().map(p => ({
+            id: p.id,
+            timestamp: p.timestamp,
+            status: p.status,
+            summary: p.summary,
+            proposalsCount: p.proposal.length,
+          })) : [],
+        }));
         return;
       }
 
